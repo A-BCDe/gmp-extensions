@@ -1,17 +1,24 @@
 CC = g++
 CFLAGS = -Wall
 LDFLAGS = -lgmp -lgmpxx
-INCLUDE = -Iinclude/
+LIB = extensions
+INCLUDE = -I$(LIB)/include/
 
-all:	main
+all:	polynomial matrix
 
-main:	src/main.cc integer-polynomial
-	$(CC) src/main.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o main
+polynomial:	app/polynomial.cc lib-polynomial lib-matrix
+	$(CC) app/polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o
 
-integer-polynomial:	src/integer_polynomial.cc include/integer_polynomial.h
-	$(CC) src/integer_polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o integer-polynomial.o
+matrix:	app/matrix.cc lib-matrix
+	$(CC) app/matrix.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o
+
+lib-matrix:	$(LIB)/src/matrix.cc $(LIB)/include/matrix.h
+	$(CC) $(LIB)/src/matrix.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o matrix.o
+
+lib-polynomial:	$(LIB)/src/polynomial.cc $(LIB)/include/polynomial.h
+	$(CC) $(LIB)/src/polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o polynomial.o
 
 clean:
-	rm -rf main integer-polynomial.o
+	rm -rf polynomial polynomial.o matrix matrix.o
 
-.PHONY:	all clean
+.PHONY:	all clean main

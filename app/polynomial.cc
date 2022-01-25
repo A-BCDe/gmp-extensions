@@ -1,7 +1,7 @@
 #include <gmpxx.h>
 
 #include <iostream>
-#include <integer_polynomial.h>
+#include <polynomial.h>
 
 int main() {
 	std::cout << "Hello, world!" << std::endl;

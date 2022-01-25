@@ -1,4 +1,4 @@
-#include <integer_polynomial.h>
+#include <polynomial.h>
 
 namespace project {
 
