@@ -6,8 +6,10 @@ INCLUDE = -I$(LIB)/include/
 
 all:	polynomial matrix
 
-polynomial:	app/polynomial.cc lib-polynomial lib-matrix
+polynomial:	app/polynomial.cc lib
 	$(CC) app/polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o
+
+lib:	lib-polynomial lib-matrix
 
 matrix:	app/matrix.cc lib-matrix
 	$(CC) app/matrix.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o
