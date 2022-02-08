@@ -1,10 +1,12 @@
 #include <gmpxx.h>
 
 #include <iostream>
-#include <polynomial.h>
+#include <prime_generator.h>
 
 int main() {
 	std::cout << "Hello, world!" << std::endl;
-	mpz_class a("123456789123456789123456789123456789"), b("987654321987654321897645321987654312");
-	std::cout << a + b << std::endl;
+	project::prime_generator pg;
+	while(true) {
+		std::cout << pg.next_prime().get_str() << '\n';
+	}
 }

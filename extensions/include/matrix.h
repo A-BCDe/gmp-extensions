@@ -6,7 +6,7 @@
 #include <initializer_list>
 #include <vector>
 
-namespace matrix {
+namespace project {
     class integer_matrix {
     public:
         integer_matrix(size_t row, size_t col);

@@ -14,15 +14,27 @@ namespace project {
 		explicit integer_polynomial(std::vector<mpz_class>);
 		explicit integer_polynomial(std::vector<std::string> const&);
 
-		[[nodiscard]] size_t degree() const { assert(!is_zero()); return coef.size() - 1; }
+		[[nodiscard]] static integer_polynomial monomial(mpz_class const&, size_t);
+
+		[[nodiscard]] size_t degree() const noexcept { assert(!is_zero()); return coef.size() - 1; }
+		[[nodiscard]] mpz_class const &leading() const { assert(!is_zero()); return coef.back(); }
+
 		[[nodiscard]] bool is_zero() const noexcept { return coef.empty(); }
+		[[nodiscard]] bool is_constant() const noexcept { return coef.size() < 2; }
+		[[nodiscard]] bool is_square_free() const;
+		[[nodiscard]] bool is_square_free(mpz_class const &p) const;
+		[[nodiscard]] bool is_monic() const noexcept { return !coef.empty() && coef.back() == 1; }
+
 		integer_polynomial &negate() noexcept;
 
-		// https://mathworld.wolfram.com/SylvesterMatrix.html
-		// https://mathworld.wolfram.com/Resultant.html
-		// https://mathworld.wolfram.com/PolynomialDiscriminant.html
-		mpz_class discriminant() const;
+		integer_polynomial &modulo_eq(integer_polynomial, mpz_class const&);
+		[[nodiscard]] integer_polynomial modulo(integer_polynomial, mpz_class const&) const;
+
+		integer_polynomial &derivative_eq();
+		[[nodiscard]] integer_polynomial derivative(integer_polynomial const&) const;
+
 		std::vector<integer_polynomial> factorize() const;
+		std::vector<integer_polynomial> factorize(mpz_class const&) const;
 
 		mpz_class &operator[](size_t idx) { assert(idx < coef.size()); return coef[idx]; }
 		mpz_class const &operator[](size_t idx) const { assert(idx < coef.size()); return coef[idx]; }
@@ -34,10 +46,15 @@ namespace project {
 		integer_polynomial &operator+=(integer_polynomial const &poly) { return add_eq(poly); }
 		integer_polynomial &operator-=(integer_polynomial const &poly) { return sub_eq(poly); }
 		integer_polynomial &operator*=(integer_polynomial const &poly) { return mul_eq(poly); }
+		integer_polynomial &operator*=(mpz_class const &n) { return mul_scalar_eq(n); }
 
 		[[nodiscard]] integer_polynomial operator+(integer_polynomial const &poly) const { return add(poly); }
 		[[nodiscard]] integer_polynomial operator-(integer_polynomial const &poly) const { return sub(poly); }
 		[[nodiscard]] integer_polynomial operator*(integer_polynomial const &poly) const { return mul(poly); }
+		[[nodiscard]] integer_polynomial operator*(mpz_class const &n) const { return mul_scalar(n); }
+
+		friend integer_polynomial gcd(integer_polynomial, integer_polynomial);
+		friend integer_polynomial gcd(integer_polynomial, integer_polynomial, mpz_class const&);
 
 	private:
 		std::vector<mpz_class> coef;
@@ -47,12 +64,16 @@ namespace project {
 		integer_polynomial &add_eq(integer_polynomial const&);
 		integer_polynomial &sub_eq(integer_polynomial const&);
 		integer_polynomial &mul_eq(integer_polynomial const&);
+		integer_polynomial &mul_scalar_eq(mpz_class const&);
 
 		[[nodiscard]] integer_polynomial neg() const;
 		[[nodiscard]] integer_polynomial add(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial sub(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial mul(integer_polynomial const&) const;
+		[[nodiscard]] integer_polynomial &mul_scalar(mpz_class const&) const;
 	};
+
+	[[nodiscard]] bool is_prime(mpz_class const&);
 }
 
 #endif

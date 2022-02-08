@@ -2,15 +2,13 @@
 
 #include <gmpxx.h>
 
-#include <algorithm>
 #include <cassert>
 #include <initializer_list>
-#include <iostream>
 #include <ostream>
 #include <vector>
 #include <unistd.h>
 
-namespace matrix {
+namespace project {
 
 // constructors
 
