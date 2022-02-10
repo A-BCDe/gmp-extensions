@@ -1,8 +1,12 @@
 #include "polynomial.h"
 
-#include <matrix.h>
 
+#include <matrix.h>
 #include <prime_generator.h>
+#include <polynomial_matrix.h>
+
+#include <cmath>
+#include <iostream>
 
 namespace project {
 
@@ -44,6 +48,7 @@ namespace project {
 	}
 
 	integer_polynomial &integer_polynomial::modulo_eq(integer_polynomial poly, mpz_class const &p) {
+		assert(!poly.is_zero());
 		mpz_class tmp;
 		if(!poly.is_monic()) {
 			int result = mpz_invert(tmp.get_mpz_t(), poly.leading().get_mpz_t(), p.get_mpz_t());
@@ -54,11 +59,10 @@ namespace project {
 		}
 		else {
 			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
-				poly.coef[i] = (poly.coef[i] * tmp) % p;
+				poly.coef[i] %= p;
 			}
 		}
-		integer_polynomial polynomial;
-		while(degree() >= poly.degree()) {
+		while(coef.size() >= poly.coef.size()) {
 			coef.back() %= p;
 			for(size_t i = 0; i < poly.coef.size(); i++) {
 				coef[coef.size() - poly.coef.size() + i] -= poly.coef[i] * leading();
@@ -140,18 +144,44 @@ namespace project {
 
 		// 3
 		auto factor_p = factorize(p);
+
+		return {};
 	}
 
 	std::vector<integer_polynomial> integer_polynomial::factorize(mpz_class const &p) const {
-		integer_matrix Q_h(degree(), degree());
+		// Berlekamp
+		integer_matrix L(degree(), degree());
+		mpz_class tmp;
+
 		for(size_t i = 0; i < degree(); i++) {
-			for(size_t j = 0; j < degree(); j++) {
-				Q_h(i, j) =
+			tmp = p * i;
+			// WARNING: tmp.get_ui() will crash if too large
+			// TODO: Calculate mono.modulo_eq without crashing
+			auto mono = monomial(1, tmp.get_ui());
+			mono.modulo_eq(*this, p);
+			size_t j = 0;
+			// TODO: Fix three comments below to make the algorithm right
+			if(mono.is_zero()) {
+				// L(j, i)
+				for(; j < degree(); j++) L(i, j) = 0;
+			}
+			else {
+				// L(j, i)
+				for (; j <= mono.degree(); j++) L(i, j) = mono[j];
+				// L(j, i)
+				for (; j < degree(); j++) L(i, j) = 0;
 			}
 		}
+		for(size_t i = 0; i < degree(); i++) --L(i, i);
+		std::cout << "L:\n" << L << "\n\n";
+		auto space = kernel(L);
+		for(auto const &v : space) {
+			std::cout << v << '\n';
+		}
+		return {};
 	}
 
-	mpz_class integer_polynomial::operator()(const mpz_class &x) const {
+	mpz_class integer_polynomial::operator()(mpz_class const &x) const {
 		mpz_class res(coef[0]), mul(x);
 		for(size_t i = 1; i < coef.size(); i++) {
 			res += mul * coef[i];
@@ -230,6 +260,29 @@ namespace project {
 		return polynomial.mul_scalar_eq(n);
 	}
 
+	std::string integer_polynomial::get_str() const {
+		std::string res;
+		size_t pow = 0;
+		bool start = true;
+		if(is_zero()) return res = "0";
+		for(auto const &now : coef) {
+			if(now == 0) {
+				pow++;
+				continue;
+			}
+			if(pow) {
+				if(!start) res += '+';
+				if(abs(now) != 1) res += now.get_str();
+				if(pow > 1) res += "x^" + std::to_string(pow);
+				else res += 'x';
+				start = false;
+			}
+			else { res += now.get_str(); start = false; }
+			pow++;
+		}
+		return res;
+	}
+
 
 	// friend functions
 
@@ -292,6 +345,11 @@ namespace project {
 			a.coef[off] %= p;
 		} a.clean();
 		return gcd(std::move(b), std::move(a), p);
+	}
+
+	std::ostream &operator<<(std::ostream &os, integer_polynomial const &poly) {
+		os << poly.get_str();
+		return os;
 	}
 
 	// outside class

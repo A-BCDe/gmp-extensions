@@ -53,8 +53,12 @@ namespace project {
 		[[nodiscard]] integer_polynomial operator*(integer_polynomial const &poly) const { return mul(poly); }
 		[[nodiscard]] integer_polynomial operator*(mpz_class const &n) const { return mul_scalar(n); }
 
+		std::string get_str() const;
+
 		friend integer_polynomial gcd(integer_polynomial, integer_polynomial);
 		friend integer_polynomial gcd(integer_polynomial, integer_polynomial, mpz_class const&);
+
+		friend std::ostream &operator<<(std::ostream&, integer_polynomial const&);
 
 	private:
 		std::vector<mpz_class> coef;

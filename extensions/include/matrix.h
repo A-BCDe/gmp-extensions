@@ -3,6 +3,8 @@
 
 #include <gmpxx.h>
 
+#include <vector.h>
+
 #include <initializer_list>
 #include <vector>
 
@@ -30,6 +32,7 @@ namespace project {
         [[nodiscard]] std::vector<mpz_class> get_diagonal() const;
 
         friend std::ostream &operator<<(std::ostream &os, integer_matrix const &M);
+	    friend std::vector<vector> kernel(integer_matrix);
 
     private:
         size_t row, col;
@@ -40,6 +43,7 @@ namespace project {
 
         void row_exchange(size_t l, size_t r);
         void row_negate(size_t r);
+		void row_multiply(size_t, mpz_class const&);
         void row_multiply_and_add(size_t from, size_t to, const mpz_class& mul);
         void row_gcd_operation(size_t piv, size_t l, size_t r);
 
@@ -50,6 +54,7 @@ namespace project {
 
         void col_exchange(size_t l, size_t r);
         void col_negate(size_t c);
+		void col_multiply(size_t, mpz_class const&);
         void col_multiply_and_add(size_t from, size_t to, const mpz_class& mul);
         void col_gcd_operation(size_t piv, size_t l, size_t r);
 

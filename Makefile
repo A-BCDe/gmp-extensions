@@ -7,18 +7,24 @@ INCLUDE = -I$(LIB)/include/
 all:	polynomial matrix
 
 polynomial:	app/polynomial.cc lib
-	$(CC) app/polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o prime_generator.o
+	$(CC) app/polynomial.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o prime_generator.o vector.o
 
-lib:	lib-polynomial lib-matrix lib-prime-generator
+lib:	lib-integer-vector lib-polynomial lib-integer-matrix lib-prime-generator lib-polynomial-matrix
 
-matrix:	app/matrix.cc lib-matrix
-	$(CC) app/matrix.cc $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o
+matrix:	app/matrix.cc lib-integer-matrix
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o
 
-lib-matrix:	$(LIB)/src/matrix.cc $(LIB)/include/matrix.h
+lib-integer-vector:	$(LIB)/src/vector.cc $(LIB)/include/vector.h
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o vector.o
+
+lib-integer-matrix:	$(LIB)/src/matrix.cc $(LIB)/include/matrix.h lib-integer-vector
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o matrix.o
 
 lib-polynomial:	$(LIB)/src/polynomial.cc $(LIB)/include/polynomial.h
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o polynomial.o
+
+lib-polynomial-matrix:	$(LIB)/src/polynomial_matrix.cc $(LIB)/include/polynomial_matrix.h
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o polynomial_matrix.o
 
 lib-prime-generator:	$(LIB)/src/prime_generator.cc $(LIB)/include/prime_generator.h
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o prime_generator.o
