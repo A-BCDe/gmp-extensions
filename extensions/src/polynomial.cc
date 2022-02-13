@@ -138,10 +138,6 @@ namespace project {
 		return polynomial.derivative_eq();
 	}
 
-	// TODO: Fix it.
-	// Error when:
-	// std::vector<std::string>{ "2", "1", "3", "1", "1" }
-	// p = 11
 	integer_polynomial &integer_polynomial::divexact_modulo_eq(integer_polynomial const &poly, mpz_class const &p) {
 		assert(!poly.is_zero());
 		assert(is_prime(p));
