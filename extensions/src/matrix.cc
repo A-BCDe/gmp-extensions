@@ -420,14 +420,11 @@ namespace project {
         return os;
     }
 
-	// TODO: Fix kernel with input x^3 + x^2 - 2
-	// Use back substitution!
-	// https://twlab.tistory.com/21
 	std::vector<vector> kernel(integer_matrix mat) {
 		size_t piv = 0;
 		std::vector<vector> space;
 		std::vector<size_t> pivot;
-		mpz_class g, tmp;
+		mpz_class g, mul, tmp, tmp2;
 		for(size_t c = 0; c < mat.col; c++) {
 			size_t r = piv;
 			while(r < mat.row) {
@@ -450,45 +447,150 @@ namespace project {
 			}
 		}
 
+		for(size_t r = 0; r < mat.row; r++) {
+			g = abs(mat(r, 0));
+			for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
+			if(g == 0) continue;
+			for(size_t c = 0; c < mat.col; c++) {
+				mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
+				mat(r, c) = tmp;
+			}
+		}
+
 		space.reserve(mat.col - pivot.size());
 		if(pivot.empty()) {
-			for(size_t i = 0; i < mat.col; i++) {
+			for(size_t c = 0; c < mat.col; c++) {
 				vector v(mat.col);
-				for(size_t j = 0; j < mat.col; j++) {
-					v[j] = (i == j);
-				}
+				v[c] = 1;
 				space.emplace_back(std::move(v));
 			}
 			return space;
 		}
-		std::cout << "mat:\n" << mat << "\n\n";
+
 		piv = 0;
-		// TODO: Fix the for loop.
+		mul = 1;
+		for(size_t r = 0; r < pivot.size(); r++) {
+			mul *= mat(r, pivot[r]);
+		}
 		for(size_t c = 0; c < mat.col; c++) {
+			bool flag = false;
 			if(pivot[piv] == c) {
 				piv++;
 				continue;
 			}
 			vector v(mat.col);
-			size_t piv1 = 0;
-			for(size_t i = 0; i < mat.col; i++) {
-				if(pivot[piv1] == i) {
-					v[i] = -mat(i, c);
-					piv1++;
-				}
-				else {
-					std::cout << "pivot.size() = " << pivot.size() << '\n';
-					std::cout << "piv1 = " << piv1 << ", pivot[piv1] = " << pivot[piv1] << '\n';
-					v[i] = (i == c) * mat(piv1, pivot[piv1]);
-				}
+			v[c] = mul;
+			for(size_t r = 0; r < pivot.size(); r++) {
+				v[pivot[r]] = v[c] * mat(r, c);
+				mpz_divexact(tmp2.get_mpz_t(), v[pivot[r]].get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
+				v[pivot[r]] = tmp2;
 			}
 			g = v[0];
 			for(size_t i = 1; i < mat.col; i++) {
 				g = gcd(g, v[i]);
 			}
+			assert(g != 0);
 			for(size_t i = 0; i < mat.col; i++) {
-				mpz_divexact(tmp.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
-				v[i] = tmp;
+				if(!flag) {
+					if(v[i] > 0) flag = true;
+					else if(v[i] < 0) flag = true, g = -g;
+					else continue;
+				}
+				mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
+				v[i] = tmp2;
+			}
+			space.emplace_back(std::move(v));
+		}
+
+		return space;
+	}
+
+	std::vector<vector> kernel(integer_matrix mat, mpz_class const &p) {
+		assert(p != 0);
+		size_t piv = 0;
+		std::vector<vector> space;
+		std::vector<size_t> pivot;
+		mpz_class g, mul, tmp, tmp2;
+		for(size_t c = 0; c < mat.col; c++) {
+			size_t r = piv;
+			while(r < mat.row) {
+				mat(r, c) %= p;
+				if(mat(r, c) != 0) {
+					pivot.push_back(c);
+					mat.row_exchange(piv, r);
+					for(r = 0; r < mat.row; r++) {
+						if(r == piv) continue;
+						if(mat(r, c) == 0) continue;
+						g = gcd(mat(piv, c), mat(r, c));
+						mpz_divexact(tmp.get_mpz_t(), mat(piv, c).get_mpz_t(), g.get_mpz_t());
+						mat.row_multiply(r, tmp);
+						mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), mat(piv, c).get_mpz_t());
+						mat.row_multiply_and_add(piv, r, -tmp);
+					}
+					piv++;
+					break;
+				}
+				r++;
+			}
+		}
+
+		for(size_t r = 0; r < mat.row; r++) {
+			for(size_t c = 0; c < mat.col; c++) {
+				mat(r, c) %= p;
+			}
+		}
+
+		for(size_t r = 0; r < mat.row; r++) {
+			g = abs(mat(r, 0));
+			for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
+			if(g == 0) continue;
+			for(size_t c = 0; c < mat.col; c++) {
+				mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
+				mat(r, c) = tmp;
+			}
+		}
+
+		space.reserve(mat.col - pivot.size());
+		if(pivot.empty()) {
+			for(size_t c = 0; c < mat.col; c++) {
+				vector v(mat.col);
+				v[c] = 1;
+				space.emplace_back(std::move(v));
+			}
+			return space;
+		}
+
+		piv = 0;
+		mul = 1;
+		for(size_t r = 0; r < pivot.size(); r++) {
+			mul *= mat(r, pivot[r]);
+		}
+		assert(mul % p != 0);
+		for(size_t c = 0; c < mat.col; c++) {
+			bool flag = false;
+			if(pivot[piv] == c) {
+				piv++;
+				continue;
+			}
+			vector v(mat.col);
+			v[c] = mul;
+			for(size_t r = 0; r < pivot.size(); r++) {
+				tmp2 = -v[c] * mat(r, c);
+				mpz_divexact(v[pivot[r]].get_mpz_t(), tmp2.get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
+			}
+			g = v[0];
+			for(size_t i = 1; i < mat.col; i++) {
+				g = gcd(g, v[i]);
+			}
+			assert(g != 0);
+			for(size_t i = 0; i < mat.col; i++) {
+				if(!flag) {
+					if(v[i] > 0) flag = true;
+					else if(v[i] < 0) flag = true, g = -g;
+					else continue;
+				}
+				mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
+				v[i] = (tmp2 % p + p) % p;
 			}
 			space.emplace_back(std::move(v));
 		}

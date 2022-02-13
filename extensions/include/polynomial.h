@@ -3,6 +3,8 @@
 
 #include <gmpxx.h>
 
+#include <vector.h>
+
 #include <cassert>
 #include <string>
 #include <vector>
@@ -13,8 +15,10 @@ namespace project {
 		explicit integer_polynomial() = default;
 		explicit integer_polynomial(std::vector<mpz_class>);
 		explicit integer_polynomial(std::vector<std::string> const&);
+		explicit integer_polynomial(vector const&);
 
 		[[nodiscard]] static integer_polynomial monomial(mpz_class const&, size_t);
+		[[nodiscard]] static integer_polynomial constant(mpz_class const&);
 
 		[[nodiscard]] size_t degree() const noexcept { assert(!is_zero()); return coef.size() - 1; }
 		[[nodiscard]] mpz_class const &leading() const { assert(!is_zero()); return coef.back(); }
@@ -31,7 +35,10 @@ namespace project {
 		[[nodiscard]] integer_polynomial modulo(integer_polynomial, mpz_class const&) const;
 
 		integer_polynomial &derivative_eq();
-		[[nodiscard]] integer_polynomial derivative(integer_polynomial const&) const;
+		[[nodiscard]] integer_polynomial derivative() const;
+
+		integer_polynomial &divexact_modulo_eq(integer_polynomial const&, mpz_class const&);
+		[[nodiscard]] integer_polynomial divexact_modulo(integer_polynomial const &poly, mpz_class const &p) const;
 
 		std::vector<integer_polynomial> factorize() const;
 		std::vector<integer_polynomial> factorize(mpz_class const&) const;
@@ -52,6 +59,9 @@ namespace project {
 		[[nodiscard]] integer_polynomial operator-(integer_polynomial const &poly) const { return sub(poly); }
 		[[nodiscard]] integer_polynomial operator*(integer_polynomial const &poly) const { return mul(poly); }
 		[[nodiscard]] integer_polynomial operator*(mpz_class const &n) const { return mul_scalar(n); }
+
+		[[nodiscard]] bool operator==(integer_polynomial const &poly) const { return equal(poly); }
+		[[nodiscard]] bool operator!=(integer_polynomial const &poly) const { return !equal(poly); }
 
 		std::string get_str() const;
 
@@ -75,6 +85,8 @@ namespace project {
 		[[nodiscard]] integer_polynomial sub(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial mul(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial &mul_scalar(mpz_class const&) const;
+
+		[[nodiscard]] bool equal(integer_polynomial const&) const;
 	};
 
 	[[nodiscard]] bool is_prime(mpz_class const&);

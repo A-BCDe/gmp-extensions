@@ -10,14 +10,47 @@
 
 namespace project {
 
+	// polynomial.cc specific functions
+
+	static integer_polynomial make_mono(
+			mpz_class const &coef,
+			mpz_class deg,
+			integer_polynomial const &poly,
+			mpz_class const &p) {
+		assert(!poly.is_zero());
+		assert(coef % p != 0);
+		integer_polynomial result({ (coef % p + p) % p });
+		integer_polynomial mul = integer_polynomial::monomial(1, 1);
+		while(deg > 0) {
+			if(mpz_odd_p(deg.get_mpz_t())) {
+				result *= mul;
+				result.modulo_eq(poly, p);
+			}
+			mul *= mul;
+			mul.modulo_eq(poly, p);
+			deg /= 2;
+		}
+		return result;
+	}
+
+	// class member functions
+
 	integer_polynomial::integer_polynomial(std::vector<mpz_class> coef)
-	  : coef(std::move(coef)) {}
+	  : coef(std::move(coef)) { clean(); }
 
 	integer_polynomial::integer_polynomial(std::vector<std::string> const &coef) {
 		this->coef.reserve(coef.size());
 		for(std::string const &now : coef) {
 			this->coef.emplace_back(now.c_str());
 		}
+	}
+
+	integer_polynomial::integer_polynomial(vector const &v) {
+		coef.reserve(v.length());
+		for(size_t i = 0; i < v.length(); i++) {
+			coef.emplace_back(v[i]);
+		}
+		clean();
 	}
 
 	integer_polynomial integer_polynomial::monomial(mpz_class const &coefficient, size_t deg) {
@@ -28,6 +61,11 @@ namespace project {
 			polynomial.coef.emplace_back(0);
 		} polynomial.coef.emplace_back(coefficient);
 		return polynomial;
+	}
+
+	integer_polynomial integer_polynomial::constant(mpz_class const &c) {
+		if(c == 0) return integer_polynomial();
+		return integer_polynomial({ c });
 	}
 
 
@@ -48,8 +86,11 @@ namespace project {
 	}
 
 	integer_polynomial &integer_polynomial::modulo_eq(integer_polynomial poly, mpz_class const &p) {
-		assert(!poly.is_zero());
+		assert(p != 0);
 		mpz_class tmp;
+		while(poly.leading() % p == 0) poly.coef.pop_back();
+		assert(!poly.is_zero());
+		if(poly.leading() < 0) poly = -poly;
 		if(!poly.is_monic()) {
 			int result = mpz_invert(tmp.get_mpz_t(), poly.leading().get_mpz_t(), p.get_mpz_t());
 			assert(result);
@@ -62,8 +103,12 @@ namespace project {
 				poly.coef[i] %= p;
 			}
 		}
+
 		while(coef.size() >= poly.coef.size()) {
-			coef.back() %= p;
+			if((coef.back() %= p) == 0) {
+				clean();
+				continue;
+			}
 			for(size_t i = 0; i < poly.coef.size(); i++) {
 				coef[coef.size() - poly.coef.size() + i] -= poly.coef[i] * leading();
 			}
@@ -88,19 +133,56 @@ namespace project {
 		return *this;
 	}
 
-	integer_polynomial integer_polynomial::derivative(integer_polynomial const&) const {
+	integer_polynomial integer_polynomial::derivative() const {
 		integer_polynomial polynomial(*this);
 		return polynomial.derivative_eq();
 	}
 
+	// TODO: Fix it.
+	// Error when:
+	// std::vector<std::string>{ "2", "1", "3", "1", "1" }
+	// p = 11
+	integer_polynomial &integer_polynomial::divexact_modulo_eq(integer_polynomial const &poly, mpz_class const &p) {
+		assert(!poly.is_zero());
+		assert(is_prime(p));
+
+		mpz_class inv, tmp;
+		int result = mpz_invert(inv.get_mpz_t(), poly.leading().get_mpz_t(), p.get_mpz_t());
+		assert(result);
+
+		std::vector<mpz_class> v;
+		while(coef.size() >= poly.coef.size()) {
+			coef.back() %= p;
+			tmp = inv * coef.back();
+			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
+				coef[coef.size() - poly.coef.size() + i] -= poly.coef[i] * tmp;
+			}
+			v.emplace_back((tmp % p + p) % p);
+			coef.pop_back();
+		}
+#ifndef NDEBUG
+		for(auto & i : coef) assert(i % p == 0);
+#endif
+		std::reverse(v.begin(), v.end());
+		coef = std::move(v);
+		clean();
+
+		return *this;
+	}
+
+	integer_polynomial integer_polynomial::divexact_modulo(integer_polynomial const &poly, mpz_class const &p) const {
+		integer_polynomial polynomial(*this);
+		return polynomial.divexact_modulo_eq(poly, p);
+	}
+
 	bool integer_polynomial::is_square_free() const {
-		return gcd(*this, derivative(*this)).is_constant();
+		return gcd(*this, derivative()).is_constant();
 	}
 
 	bool integer_polynomial::is_square_free(mpz_class const &p) const {
 		assert(p == 0 || is_prime(p));
 		if(p == 0) return is_square_free();
-		return gcd(*this, derivative(*this), p).is_constant();
+		return gcd(*this, derivative(), p).is_constant();
 	}
 
 	integer_polynomial &integer_polynomial::negate() noexcept {
@@ -144,6 +226,16 @@ namespace project {
 
 		// 3
 		auto factor_p = factorize(p);
+		for(auto &now : factor_p) {
+			if(now.leading() == 1) continue;
+			mpz_invert(tmp.get_mpz_t(), now.leading().get_mpz_t(), p.get_mpz_t());
+			for(size_t i = 0; i < now.coef.size() - 1; i++) {
+				now.coef[i] = (now.coef[i] * tmp) % p;
+			} now.coef.back() = 1;
+		}
+
+		// 4
+
 
 		return {};
 	}
@@ -155,30 +247,48 @@ namespace project {
 
 		for(size_t i = 0; i < degree(); i++) {
 			tmp = p * i;
-			// WARNING: tmp.get_ui() will crash if too large
-			// TODO: Calculate mono.modulo_eq without crashing
-			auto mono = monomial(1, tmp.get_ui());
-			mono.modulo_eq(*this, p);
-			size_t j = 0;
-			// TODO: Fix three comments below to make the algorithm right
-			if(mono.is_zero()) {
-				// L(j, i)
-				for(; j < degree(); j++) L(i, j) = 0;
-			}
-			else {
-				// L(j, i)
-				for (; j <= mono.degree(); j++) L(i, j) = mono[j];
-				// L(j, i)
-				for (; j < degree(); j++) L(i, j) = 0;
+			auto mono = make_mono(1, tmp, *this, p);
+			if(!mono.is_zero()) {
+				for (size_t j = 0; j <= mono.degree(); j++) L(j, i) = mono[j];
 			}
 		}
-		for(size_t i = 0; i < degree(); i++) --L(i, i);
-		std::cout << "L:\n" << L << "\n\n";
-		auto space = kernel(L);
-		for(auto const &v : space) {
-			std::cout << v << '\n';
+		for(size_t i = 0; i < degree(); i++) L(i, i) = (L(i, i) + p - 1) % p;
+
+		auto space = kernel(L, p);
+		for(auto &v : space) {
+			for(size_t i = 0; i < degree(); i++) {
+				v[i] = ((v[i] % p) + p) % p;
+			}
 		}
-		return {};
+
+#ifndef NDEBUG
+		for(size_t i = 0; i < degree(); i++) assert(space[0][i] == (!i));
+#endif
+
+		std::vector<integer_polynomial> factors;
+		factors.reserve(space.size());
+		factors.emplace_back(*this);
+
+		// http://newweb.cecm.sfu.ca/CAG/theses/chelsea.pdf
+		size_t r = 1;
+		while(factors.size() < space.size()) {
+			for(auto &poly : factors) {
+				assert(r < space.size());
+				for(mpz_class i = 0; i < p; i++) {
+					auto polynomial = integer_polynomial(space[r]) - constant(i);
+					auto g = gcd(polynomial, poly, p);
+					assert(!g.is_zero());
+					if(!(g.is_constant() && g[0] == 1) && g != poly) {
+						poly.divexact_modulo_eq(g, p);
+						factors.emplace_back(g);
+					}
+					if(factors.size() == space.size()) goto END;
+				}
+			}
+			r++;
+		}
+END:
+		return factors;
 	}
 
 	mpz_class integer_polynomial::operator()(mpz_class const &x) const {
@@ -219,18 +329,20 @@ namespace project {
 	}
 
 	integer_polynomial &integer_polynomial::mul_eq(integer_polynomial const &poly) {
-		std::vector<mpz_class> tmp(std::move(coef));
-		coef.clear();
-		coef.resize(tmp.size() + poly.degree());
-		for(size_t i = 0; i < tmp.size(); i++) {
-			for(size_t j = 0; j <= poly.degree(); j++) {
-				coef[i + j] += tmp[i] * poly.coef[j];
+		if(is_zero()) return *this;
+		std::vector<mpz_class> tmp(coef.size() + poly.coef.size() - 1);
+		for(size_t i = 0; i < coef.size(); i++) {
+			for(size_t j = 0; j < poly.coef.size(); j++) {
+				tmp[i + j] += coef[i] * poly.coef[j];
 			}
 		}
+		coef = std::move(tmp);
+		clean();
 		return *this;
 	}
 
 	integer_polynomial &integer_polynomial::mul_scalar_eq(mpz_class const &n) {
+		if(n == 0) return *this = integer_polynomial();
 		for(auto &now : coef) now *= n;
 		return *this;
 	}
@@ -260,6 +372,13 @@ namespace project {
 		return polynomial.mul_scalar_eq(n);
 	}
 
+	bool integer_polynomial::equal(integer_polynomial const &poly) const {
+		if(coef.size() != poly.coef.size()) return false;
+		for(size_t i = 0; i < coef.size(); i++) {
+			if(coef[i] != poly.coef[i]) return false;
+		} return true;
+	}
+
 	std::string integer_polynomial::get_str() const {
 		std::string res;
 		size_t pow = 0;
@@ -271,8 +390,9 @@ namespace project {
 				continue;
 			}
 			if(pow) {
-				if(!start) res += '+';
-				if(abs(now) != 1) res += now.get_str();
+				if(!start && now > 0) res += '+';
+				if(now == -1) res += '-';
+				else if(now != 1) res += now.get_str();
 				if(pow > 1) res += "x^" + std::to_string(pow);
 				else res += 'x';
 				start = false;
@@ -312,10 +432,8 @@ namespace project {
 
 	integer_polynomial gcd(integer_polynomial a, integer_polynomial b, const mpz_class &p) {
 		assert(is_prime(p));
-		if(a.leading() < 0) return gcd(-a, std::move(b), p);
-		if(b.leading() < 0) return gcd(std::move(a), -b, p);
-		if(a.coef.size() < b.coef.size()) return gcd(std::move(b), std::move(a), p);
-		if(b.coef.empty()) {
+		if(a.is_zero()) return gcd(std::move(b), std::move(a), p);
+		if(b.is_zero()) {
 			// convert all coefficients of `a` to non-negative
 			// and modulo p
 			for(auto &now : a.coef) {
@@ -332,6 +450,10 @@ namespace project {
 			} a.coef.back() = 1;
 			return a;
 		}
+		if(a.leading() < 0) return gcd(-a, std::move(b), p);
+		if(b.leading() < 0) return gcd(std::move(a), -b, p);
+		if(a.coef.size() < b.coef.size()) return gcd(std::move(b), std::move(a), p);
+
 		mpz_class inv;
 		int result = mpz_invert(inv.get_mpz_t(), b.leading().get_mpz_t(), p.get_mpz_t());
 		assert(result);

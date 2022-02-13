@@ -33,6 +33,7 @@ namespace project {
 
         friend std::ostream &operator<<(std::ostream &os, integer_matrix const &M);
 	    friend std::vector<vector> kernel(integer_matrix);
+		friend std::vector<vector> kernel(integer_matrix, mpz_class const&);
 
     private:
         size_t row, col;
