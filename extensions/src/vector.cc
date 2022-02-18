@@ -38,17 +38,17 @@ namespace project {
 		} return *this;
 	}
 
-	vector const &vector::neg() const {
+	vector vector::neg() const {
 		vector v(*this);
 		return v.neg_eq();
 	}
 
-	vector const &vector::add(vector const &v) const {
+	vector vector::add(vector const &v) const {
 		vector vec(*this);
 		return vec.add_eq(v);
 	}
 
-	vector const &vector::sub(vector const &v) const {
+	vector vector::sub(vector const &v) const {
 		vector vec(*this);
 		return vec.sub_eq(v);
 	}

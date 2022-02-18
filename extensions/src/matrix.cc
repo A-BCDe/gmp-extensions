@@ -1,6 +1,8 @@
-#include "matrix.h"
+#include <matrix.h>
 
 #include <gmpxx.h>
+
+#include <number_theoretic.h>
 
 #include <cassert>
 #include <initializer_list>
@@ -28,6 +30,30 @@ namespace project {
             : row(row), col(col), mat(list) {
         assert(list.size() >= row * col);
     }
+
+	integer_matrix integer_matrix::identity(size_t row, size_t col) {
+		integer_matrix I(row, col);
+		for(size_t i = 0; i < row && i < col; i++) I.mat[i * col + i] = 1;
+		return I;
+	}
+
+	integer_matrix integer_matrix::sylvester_matrix(integer_polynomial const &f, integer_polynomial const &g) {
+		assert(!f.is_zero());
+		assert(!g.is_zero());
+		integer_matrix matrix(f.degree() + g.degree(), f.degree() + g.degree());
+		size_t r = 0;
+		for(; r < g.degree(); r++) {
+			for(size_t c = 0; c <= f.degree(); c++) {
+				matrix(r, r + c) = f[f.degree() - c];
+			}
+		}
+		for(; r < f.degree() + g.degree(); r++) {
+			for(size_t c = 0; c <= g.degree(); c++) {
+				matrix(r, r + c - g.degree()) = g[g.degree() - c];
+			}
+		}
+		return matrix;
+	}
 
 // operators
 
@@ -366,20 +392,6 @@ namespace project {
         col_gcd_operation(piv, r, l);
     }
 
-// static member functions
-
-    integer_matrix integer_matrix::identity(size_t row, size_t col) {
-        integer_matrix I(row, col);
-        for(size_t i = 0; i < row && i < col; i++) I.mat[i * col + i] = 1;
-        return I;
-    }
-
-    std::pair<mpz_class, mpz_class> integer_matrix::extended_euclidean_algorithm(mpz_class const &n, mpz_class const &m) {
-        if(m == 0) return { 1, 0 };
-        auto const p = extended_euclidean_algorithm(m, n % m);
-        return { p.second, p.first - (n / m) * p.second };
-    }
-
 // misc
 
     bool integer_matrix::is_symmetric() const {
@@ -419,6 +431,35 @@ namespace project {
         }
         return os;
     }
+
+	vector solve(integer_matrix matrix, vector v, mpz_class const &m) {
+		assert(m > 0);
+		mpz_class inv, tmp;
+		for(size_t c = 0; c < matrix.col; c++) {
+			for(size_t r = c; r < matrix.row; r++) {
+				if(gcd(matrix(r, c), m) == 1) {
+					matrix.row_exchange(r, c);
+					std::swap(v[r], v[c]);
+					goto NXT;
+				}
+			}
+			assert(0);
+		NXT:invert(inv, matrix(c, c), m);
+			matrix.row_multiply(c, inv);
+			v[c] *= inv;
+			matrix(c, c) = 1;
+			for(size_t r = 0; r < matrix.row; r++) {
+				if(r == c) continue;
+				tmp = -matrix(r, c);
+				matrix.row_multiply_and_add(c, r, tmp);
+				v[r] += tmp * v[c];
+			}
+		}
+		for(size_t i = 0; i < v.length(); i++) {
+			v[i] = (v[i] % m + m) % m;
+		}
+		return v;
+	}
 
 	std::vector<vector> kernel(integer_matrix mat) {
 		size_t piv = 0;
@@ -596,5 +637,33 @@ namespace project {
 		}
 
 		return space;
+	}
+
+	mpz_class determinant(integer_matrix matrix) {
+		assert(matrix.row == matrix.col);
+		mpz_class det(1); // determinant
+		mpz_class denom(1); // denominator
+		mpz_class g, tmp;
+		for(size_t r = 0; r < matrix.row; r++) {
+			for(size_t c = r; c < matrix.col; c++) {
+				if(matrix(r, c) != 0) {
+					matrix.col_exchange(r, c);
+					goto NXT;
+				}
+			}
+			return 0;
+			NXT:det *= matrix(r, r);
+			for(size_t c = r + 1; c < matrix.col; c++) {
+				g = gcd(matrix(r, r), matrix(r, c));
+				mpz_divexact(tmp.get_mpz_t(), matrix(r, r).get_mpz_t(), g.get_mpz_t());
+				matrix.col_multiply(c, tmp);
+				denom *= tmp;
+				mpz_divexact(tmp.get_mpz_t(), matrix(r, c).get_mpz_t(), matrix(r, r).get_mpz_t());
+				matrix.col_multiply_and_add(r, c, -tmp);
+			}
+		}
+		assert(mpz_divisible_p(det.get_mpz_t(), denom.get_mpz_t()));
+		mpz_divexact(tmp.get_mpz_t(), det.get_mpz_t(), denom.get_mpz_t());
+		return tmp;
 	}
 }

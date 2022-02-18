@@ -43,6 +43,8 @@ namespace project {
 		std::vector<integer_polynomial> factorize() const;
 		std::vector<integer_polynomial> factorize(mpz_class const&) const;
 
+		std::pair<integer_polynomial, integer_polynomial> hensel_lifting(integer_polynomial, integer_polynomial, mpz_class const&, size_t, size_t) const;
+
 		mpz_class &operator[](size_t idx) { assert(idx < coef.size()); return coef[idx]; }
 		mpz_class const &operator[](size_t idx) const { assert(idx < coef.size()); return coef[idx]; }
 
@@ -84,12 +86,12 @@ namespace project {
 		[[nodiscard]] integer_polynomial add(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial sub(integer_polynomial const&) const;
 		[[nodiscard]] integer_polynomial mul(integer_polynomial const&) const;
-		[[nodiscard]] integer_polynomial &mul_scalar(mpz_class const&) const;
+		[[nodiscard]] integer_polynomial mul_scalar(mpz_class const&) const;
 
 		[[nodiscard]] bool equal(integer_polynomial const&) const;
 	};
 
-	[[nodiscard]] bool is_prime(mpz_class const&);
+	mpz_class resultant(integer_polynomial const&, integer_polynomial const&);
 }
 
 #endif

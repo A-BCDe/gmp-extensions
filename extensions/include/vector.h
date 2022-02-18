@@ -26,16 +26,16 @@ namespace project {
 		vector &add_eq(vector const&);
 		vector &sub_eq(vector const&);
 
-		vector const &neg() const;
-		vector const &add(vector const&) const;
-		vector const &sub(vector const&) const;
+		vector neg() const;
+		vector add(vector const&) const;
+		vector sub(vector const&) const;
 
 		vector &operator+=(vector const &v) { return add_eq(v); }
 		vector &operator-=(vector const &v) { return sub_eq(v); }
 
-		vector const &operator-() const { return neg(); }
-		vector const &operator+(vector const &v) const { return add(v); }
-		vector const &operator-(vector const &v) const { return sub(v); }
+		vector operator-() const { return neg(); }
+		vector operator+(vector const &v) const { return add(v); }
+		vector operator-(vector const &v) const { return sub(v); }
 
 		friend std::ostream &operator<<(std::ostream&, vector const&);
 

@@ -3,6 +3,7 @@
 
 #include <gmpxx.h>
 
+#include <polynomial.h>
 #include <vector.h>
 
 #include <initializer_list>
@@ -15,6 +16,9 @@ namespace project {
         integer_matrix(size_t row, size_t col, std::vector<std::string> const &data);
         integer_matrix(size_t row, size_t col, std::initializer_list<mpz_class> list);
 
+	    [[nodiscard]] static integer_matrix identity(size_t row, size_t col);
+	    [[nodiscard]] static integer_matrix sylvester_matrix(integer_polynomial const&, integer_polynomial const&);
+
         mpz_class &operator()(size_t r, size_t c);
         mpz_class const &operator()(size_t r, size_t c) const;
 
@@ -26,14 +30,14 @@ namespace project {
 
         [[nodiscard]] std::pair<mpz_class, mpz_class> signature() const;
 
-        static integer_matrix identity(size_t row, size_t col);
-
         [[nodiscard]] bool is_symmetric() const;
         [[nodiscard]] std::vector<mpz_class> get_diagonal() const;
 
         friend std::ostream &operator<<(std::ostream &os, integer_matrix const &M);
+		friend vector solve(integer_matrix, vector, mpz_class const&);
 	    friend std::vector<vector> kernel(integer_matrix);
 		friend std::vector<vector> kernel(integer_matrix, mpz_class const&);
+	    friend mpz_class determinant(integer_matrix);
 
     private:
         size_t row, col;
@@ -58,8 +62,6 @@ namespace project {
 		void col_multiply(size_t, mpz_class const&);
         void col_multiply_and_add(size_t from, size_t to, const mpz_class& mul);
         void col_gcd_operation(size_t piv, size_t l, size_t r);
-
-        static std::pair<mpz_class, mpz_class> extended_euclidean_algorithm(mpz_class const &n, mpz_class const &m);
     };
 }
 

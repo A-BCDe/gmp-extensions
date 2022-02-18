@@ -3,7 +3,7 @@
 
 #include <matrix.h>
 #include <prime_generator.h>
-#include <polynomial_matrix.h>
+#include <number_theoretic.h>
 
 #include <cmath>
 #include <iostream>
@@ -68,8 +68,6 @@ namespace project {
 		return integer_polynomial({ c });
 	}
 
-
-
 	void integer_polynomial::clean() noexcept {
 		size_t i = coef.size() - 1;
 		while(true) {
@@ -92,8 +90,7 @@ namespace project {
 		assert(!poly.is_zero());
 		if(poly.leading() < 0) poly = -poly;
 		if(!poly.is_monic()) {
-			int result = mpz_invert(tmp.get_mpz_t(), poly.leading().get_mpz_t(), p.get_mpz_t());
-			assert(result);
+			invert(tmp, poly.leading(), p);
 			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
 				poly.coef[i] = (poly.coef[i] * tmp) % p;
 			} poly.coef.back() = 1;
@@ -143,8 +140,7 @@ namespace project {
 		assert(is_prime(p));
 
 		mpz_class inv, tmp;
-		int result = mpz_invert(inv.get_mpz_t(), poly.leading().get_mpz_t(), p.get_mpz_t());
-		assert(result);
+		invert(inv, poly.leading(), p);
 
 		std::vector<mpz_class> v;
 		while(coef.size() >= poly.coef.size()) {
@@ -287,6 +283,78 @@ END:
 		return factors;
 	}
 
+	// Mignotte1992_Book_MathematicsForComputerAlgebra.pdf
+	std::pair<integer_polynomial, integer_polynomial> integer_polynomial::hensel_lifting(
+			integer_polynomial g,
+			integer_polynomial h,
+			mpz_class const &p,
+			size_t k,
+			size_t desired_power) const {
+		mpz_class tmp, tmp2;
+		mpz_class pk2i; // p^(k + 2^i)
+		mpz_class current_modulo;
+		mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), k);
+		current_modulo = tmp * tmp * p;
+		pk2i = tmp * p;
+		integer_polynomial diff(*this - g * h);
+#ifndef NDEBUG
+		tmp2 = resultant(g, h);
+		assert(mpz_divisible_p(tmp2.get_mpz_t(), tmp.get_mpz_t()));
+		tmp *= p;
+		assert(!mpz_divisible_p(tmp2.get_mpz_t(), tmp.get_mpz_t()));
+		mpz_divexact(tmp2.get_mpz_t(), tmp.get_mpz_t(), p.get_mpz_t());
+
+		for(size_t i = 0; i < diff.coef.size(); i++) {
+			assert(mpz_divisible_p(diff[i].get_mpz_t(), current_modulo.get_mpz_t()));
+		}
+#endif
+		// current_modulo = p^(2k + 1)
+		// pk2i = p^(k + 1)
+		size_t current_power = ((k << 1) | 1);
+		size_t current_i = 1;
+
+		while(current_power <= desired_power) {
+			// current_modulo = p^(2k + 2^i)
+			// pk2i = p^(k + 2^i)
+			size_t i;
+			for (i = 0; i < diff.coef.size(); i++) {
+				mpz_divexact(tmp.get_mpz_t(), diff[i].get_mpz_t(), pk2i.get_mpz_t());
+				diff[i] = tmp;
+			}
+			integer_matrix matrix(g.degree() + h.degree(), g.degree() + h.degree());
+
+			for (i = 0; i < g.degree(); i++) {
+				for (size_t j = 0; j <= h.degree(); j++) {
+					matrix(j + i, i) = h[j];
+				}
+			}
+			for (; i < g.degree() + h.degree(); i++) {
+				for (size_t j = 0; j <= g.degree(); j++) {
+					matrix(j + i - g.degree(), i) = g[j];
+				}
+			}
+			for(i = diff.coef.size(); i < g.degree() + h.degree(); i++) {
+				diff.coef.emplace_back(0);
+			}
+			auto result = solve(std::move(matrix), vector(diff.coef), current_modulo);
+			std::vector<mpz_class> gn_v, hn_v;
+			gn_v.reserve(g.degree());
+			hn_v.reserve(h.degree() + 1);
+			for (i = 0; i < g.degree(); i++) {
+				gn_v.emplace_back(std::move(result[i]));
+			}
+			for (; i < g.degree() + h.degree(); i++) {
+				hn_v.emplace_back(std::move(result[i]));
+			}
+			g += integer_polynomial(std::move(gn_v)) * current_modulo;
+			h += integer_polynomial(std::move(hn_v)) * current_modulo;
+			current_power += current_i;
+			current_i <<= 1;
+			mpz_pow_ui(current_modulo.get_mpz_t(), p.get_mpz_t(), current_power);
+		}
+		return { std::move(g), std::move(h) };
+	}
+
 	mpz_class integer_polynomial::operator()(mpz_class const &x) const {
 		mpz_class res(coef[0]), mul(x);
 		for(size_t i = 1; i < coef.size(); i++) {
@@ -363,7 +431,7 @@ END:
 		return polynomial.mul_eq(poly);
 	}
 
-	integer_polynomial &integer_polynomial::mul_scalar(mpz_class const &n) const {
+	integer_polynomial integer_polynomial::mul_scalar(mpz_class const &n) const {
 		integer_polynomial polynomial(*this);
 		return polynomial.mul_scalar_eq(n);
 	}
@@ -439,8 +507,7 @@ END:
 			// multiply inverse of leading coefficient
 			// and modulo p
 			mpz_class inv;
-			int result = mpz_invert(inv.get_mpz_t(), a.leading().get_mpz_t(), p.get_mpz_t());
-			assert(result);
+			invert(inv, a.leading(), p);
 			for(size_t i = 0; i < a.coef.size() - 1; i++) {
 				a.coef[i] = (a.coef[i] * inv) % p;
 			} a.coef.back() = 1;
@@ -451,8 +518,7 @@ END:
 		if(a.coef.size() < b.coef.size()) return gcd(std::move(b), std::move(a), p);
 
 		mpz_class inv;
-		int result = mpz_invert(inv.get_mpz_t(), b.leading().get_mpz_t(), p.get_mpz_t());
-		assert(result);
+		invert(inv, b.leading(), p);
 		for(size_t i = 0; i < b.coef.size() - 1; i++) {
 			b.coef[i] = (b.coef[i] * inv * a.leading()) % p;
 		} b.coef.back() = a.leading();
@@ -472,9 +538,7 @@ END:
 
 	// outside class
 
-	bool is_prime(mpz_class const &n) {
-		for(mpz_class i = 2; i * i <= n; i++) {
-			if(n % i == 0) return false;
-		} return true;
+	mpz_class resultant(integer_polynomial const &f, integer_polynomial const &g) {
+		return determinant(integer_matrix::sylvester_matrix(f, g));
 	}
 }
