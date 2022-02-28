@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -O0
+CFLAGS = --std=c++14 -Wall -O0
 LDFLAGS = -lgmp -lgmpxx
 LIB = extensions
 INCLUDE = -I$(LIB)/include/
@@ -7,9 +7,9 @@ INCLUDE = -I$(LIB)/include/
 all:	polynomial matrix
 
 polynomial:	app/polynomial.cc lib
-	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o prime_generator.o vector.o number_theoretic.o
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o prime_generator.o vector.o number_theoretic.o lattice.o
 
-lib:	lib-integer-vector lib-polynomial lib-integer-matrix lib-prime-generator lib-polynomial-matrix lib-number-theoretic
+lib:	lib-integer-vector lib-polynomial lib-integer-matrix lib-prime-generator lib-polynomial-matrix lib-number-theoretic lib-integer-lattice
 
 matrix:	app/matrix.cc lib-integer-matrix
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o vector.o number_theoretic.o
@@ -22,6 +22,9 @@ lib-integer-vector:	$(LIB)/src/vector.cc $(LIB)/include/vector.h
 
 lib-integer-matrix:	$(LIB)/src/matrix.cc $(LIB)/include/matrix.h lib-integer-vector lib-number-theoretic
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o matrix.o
+
+lib-integer-lattice:	$(LIB)/src/lattice.cc $(LIB)/include/lattice.h lib-integer-vector lib-integer-matrix lib-number-theoretic
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o lattice.o
 
 lib-polynomial:	$(LIB)/src/polynomial.cc $(LIB)/include/polynomial.h
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o polynomial.o

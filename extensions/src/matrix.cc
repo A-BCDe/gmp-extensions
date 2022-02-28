@@ -83,6 +83,32 @@ namespace project {
         return mat[r * col + c];
     }
 
+	std::vector<vector> integer_matrix::to_row_vectors() const {
+		std::vector<vector> result;
+		result.reserve(row);
+		for(size_t r = 0; r < row; r++) {
+			vector v(col);
+			for(size_t c = 0; c < col; c++) {
+				v[c] = get(r, c);
+			}
+			result.emplace_back(std::move(v));
+		}
+		return result;
+	}
+
+	std::vector<vector> integer_matrix::to_col_vectors() const {
+		std::vector<vector> result;
+		result.reserve(col);
+		for(size_t c = 0; c < col; c++) {
+			vector v(row);
+			for(size_t r = 0; r < row; r++) {
+				v[r] = get(r, c);
+			}
+			result.emplace_back(std::move(v));
+		}
+		return result;
+	}
+
     integer_matrix integer_matrix::to_smith_normal_form() {
         auto Y = identity(row, col);
         auto current_row = row;

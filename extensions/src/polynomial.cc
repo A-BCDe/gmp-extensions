@@ -1,12 +1,15 @@
 #include "polynomial.h"
 
+#include <lattice.h>
 
 #include <matrix.h>
 #include <prime_generator.h>
 #include <number_theoretic.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <set>
 
 namespace project {
 
@@ -31,6 +34,21 @@ namespace project {
 			deg /= 2;
 		}
 		return result;
+	}
+
+	inline static size_t find_power(size_t l, size_t r, mpz_class const &p, mpz_class const &n) {
+		mpz_class tmp;
+		size_t res = l;
+		while(l < r) {
+			auto const m = ((l + r) >> 1);
+			mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), m);
+			if(n >= tmp) {
+				res = m;
+				l = m + 1;
+			}
+			else r = m;
+		}
+		return res;
 	}
 
 	// class member functions
@@ -69,6 +87,7 @@ namespace project {
 	}
 
 	void integer_polynomial::clean() noexcept {
+		if(is_zero()) return;
 		size_t i = coef.size() - 1;
 		while(true) {
 			if(coef[i] != 0) {
@@ -81,6 +100,31 @@ namespace project {
 			}
 			i--;
 		}
+	}
+
+	bool integer_polynomial::is_divisible_modulo(integer_polynomial const &poly, mpz_class const &p) const {
+		assert(!poly.is_zero());
+		assert(is_prime(p));
+
+		integer_polynomial polynomial(*this);
+		mpz_class inv, tmp;
+		invert(inv, poly.leading(), p);
+
+		std::vector<mpz_class> v;
+		while(polynomial.coef.size() >= poly.coef.size()) {
+			polynomial.coef.back() %= p;
+			tmp = inv * polynomial.coef.back();
+			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
+				polynomial.coef[coef.size() - poly.coef.size() + i] -= poly.coef[i] * tmp;
+			}
+			v.emplace_back((tmp % p + p) % p);
+			polynomial.coef.pop_back();
+			polynomial.clean();
+		}
+
+		return std::all_of(polynomial.coef.begin(), polynomial.coef.end(), [&p](mpz_class const &n) {
+			return n % p == 0;
+		});
 	}
 
 	integer_polynomial &integer_polynomial::modulo_eq(integer_polynomial poly, mpz_class const &p) {
@@ -122,10 +166,29 @@ namespace project {
 		return polynomial.modulo_eq(std::move(poly), p);
 	}
 
+	integer_polynomial &integer_polynomial::primitive_eq() {
+		if(is_zero()) return *this;
+		mpz_class g = coef[0];
+		mpz_class tmp;
+		for(size_t i = 1; i < coef.size(); i++) {
+			g = gcd(g, coef[i]);
+		}
+		for(auto &now : coef) {
+			mpz_divexact(tmp.get_mpz_t(), now.get_mpz_t(), g.get_mpz_t());
+			now = tmp;
+		}
+		return *this;
+	}
+
+	integer_polynomial integer_polynomial::primitive() const {
+		integer_polynomial polynomial(*this);
+		return polynomial.primitive_eq();
+	}
+
 	integer_polynomial &integer_polynomial::derivative_eq() {
 		for(size_t i = 0; i < coef.size() - 1; i++) {
-			coef[i] = coef[i] * (i + 1);
-		}
+			coef[i] = coef[i + 1] * (i + 1);
+		} coef.pop_back();
 		clean();
 		return *this;
 	}
@@ -133,6 +196,43 @@ namespace project {
 	integer_polynomial integer_polynomial::derivative() const {
 		integer_polynomial polynomial(*this);
 		return polynomial.derivative_eq();
+	}
+
+	integer_polynomial *integer_polynomial::divexact(integer_polynomial const &poly) const {
+		assert(!poly.is_zero());
+		if(is_zero()) {
+			return new(std::nothrow) integer_polynomial;
+		}
+		if(coef.size() < poly.coef.size()) {
+			return nullptr;
+		}
+		integer_polynomial polynomial(*this);
+		integer_polynomial quotient;
+		mpz_class tmp;
+
+		size_t deg = polynomial.coef.size() - poly.coef.size() + 1;
+
+		do {
+			deg--;
+			if(!mpz_divisible_p(polynomial.coef.back().get_mpz_t(), poly.leading().get_mpz_t())) {
+				return nullptr;
+			}
+			mpz_divexact(tmp.get_mpz_t(), polynomial.coef.back().get_mpz_t(), poly.leading().get_mpz_t());
+			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
+				polynomial.coef[deg + i] -= tmp * poly[i];
+			} polynomial.coef.pop_back();
+			quotient.coef.emplace_back(tmp);
+		} while(deg);
+
+		for(auto const &now : polynomial.coef) {
+			if(now != 0) {
+				return nullptr;
+			}
+		}
+
+		std::reverse(quotient.coef.begin(), quotient.coef.end());
+
+		return new(std::nothrow) integer_polynomial(std::move(quotient));
 	}
 
 	integer_polynomial &integer_polynomial::divexact_modulo_eq(integer_polynomial const &poly, mpz_class const &p) {
@@ -185,16 +285,15 @@ namespace project {
 
 	// Based on Thiemann2020_Article_FormalizingTheLLLBasisReductio
 	std::vector<integer_polynomial> integer_polynomial::factorize() const {
-
 		assert(is_square_free());
 		assert(degree());
 
 		// 1
-		mpz_class const two(2);
-		mpz_class tmp, f(0);
+		mpz_class tmp, f;
 		mpz_class b = leading();
 		mpz_class B;
-		mpz_pow_ui(B.get_mpz_t(), two.get_mpz_t(), 5 * degree() * degree());
+		mpz_ui_pow_ui(B.get_mpz_t(), 2, 5 * degree() * degree());
+
 		for(auto const &now : coef) {
 			f += now * now;
 		}
@@ -204,17 +303,23 @@ namespace project {
 
 		// 2
 		prime_generator pg;
-		mpz_class p;
+		mpz_class p, p_power_l;
 		do {
 			p = pg.next_prime();
-		} while(mpz_divisible_p(leading().get_mpz_t(), p.get_mpz_t()) || is_square_free(p));
+		} while(mpz_divisible_p(leading().get_mpz_t(), p.get_mpz_t()) || !is_square_free(p));
 
-		mpz_class l(0);
-		tmp = 1;
-		while(B >= tmp) {
-			tmp *= p;
-			++l;
+		size_t l = 1;
+		tmp = p;
+		while(B > tmp) {
+			tmp *= tmp;
+			l <<= 1;
 		}
+		l = find_power((l >> 1) + 1, l + 1, p, B);
+		mpz_pow_ui(p_power_l.get_mpz_t(), p.get_mpz_t(), l);
+
+		std::cout << "B = " << B.get_str() << '\n';
+		std::cout << "l = " << l << '\n';
+		std::cout << "p = " << p.get_str() << "\n\n";
 
 		// 3
 		auto factor_p = factorize(p);
@@ -227,12 +332,154 @@ namespace project {
 		}
 
 		// 4
+		integer_polynomial tmp_poly1;
+		integer_polynomial tmp_poly2;
+		integer_polynomial tmp_poly3(*this);
+		std::vector<integer_polynomial> hensel_v;
 
+		for(auto const &poly : factor_p) {
+			tmp_poly1 = poly;
+			tmp_poly2 = tmp_poly3.divexact_modulo(tmp_poly1, p);
+			auto pair = tmp_poly3.hensel_lifting(tmp_poly1, tmp_poly2, p, 0, l);
+			hensel_v.emplace_back(std::move(pair.first));
+			tmp_poly3 = std::move(pair.second);
+		}
 
-		return {};
+		std::cout << "\nhensel_v:\n";
+		for(auto const &now : hensel_v) {
+			std::cout << now << '\n';
+		} std::cout << "---hensel---\n\n";
+
+		// 5 ~ 14
+		std::set<size_t> T;
+		std::vector<integer_polynomial> result;
+		for(size_t i = 0; i < hensel_v.size(); i++) T.insert(i);
+		std::sort(hensel_v.begin(), hensel_v.end(),
+				  [](integer_polynomial const &a, integer_polynomial const &b) {
+			return a.degree() < b.degree();
+		});
+		integer_polynomial f_star = *this;
+		ssize_t offset = 0;
+	LP: while(!T.empty()) {
+			assert(offset < T.size());
+			auto const current_idx = *std::next(T.rbegin(), offset++);
+			std::cout << "T:\n";
+			for(auto now : T) {
+				std::cout << now << ": " << hensel_v[now] << '\n';
+			} std::cout << "---T---\n\n";
+			auto u = hensel_v[current_idx];
+			std::cout << "u = " << u << "\n\n";
+			std::set<size_t> degree_set; // Deg
+			degree_set.insert(0);
+			for(auto now_idx : T) {
+				if(now_idx == current_idx) continue;
+				auto const &now = hensel_v[now_idx];
+				size_t now_deg = now.degree();
+				auto degree_set_tmp = degree_set;
+				for(auto prev : degree_set) {
+					degree_set_tmp.insert(prev + now_deg);
+				}
+				degree_set = std::move(degree_set_tmp);
+			}
+
+			std::cout << "degree_set:\n";
+			for(auto now : degree_set) {
+				std::cout << now << ' ';
+			} std::cout << "\n---degree_set---\n\n";
+
+			for(size_t now_deg : degree_set) {
+				size_t const k = now_deg + 1;
+				size_t const j = u.coef.size() + now_deg;
+				//std::cout << "k = " << k << ", j = " << j << '\n';
+				//std::cout << "u = " << u << '\n';
+				mpz_ui_pow_ui(B.get_mpz_t(), 2, 5 * j * j);
+
+				f = 0; // ||f*||
+				for(auto const &now : f_star.coef) f += now * now;
+				mpz_pow_ui(tmp.get_mpz_t(), f.get_mpz_t(), j << 1);
+				B = sqrt(B * tmp) + 1;
+
+				size_t lp = 1; // l'
+				tmp = p;
+				while(B > tmp) {
+					tmp *= tmp;
+					lp <<= 1;
+				}
+				lp = find_power((lp >> 1) + 1, lp + 1, p, B);
+				if(l > lp) {
+					l = lp;
+					mpz_pow_ui(p_power_l.get_mpz_t(), p.get_mpz_t(), l);
+				}
+
+				// 12: LLL
+				// Make a lattice L_{u,k}
+				std::vector<vector> vectors;
+				vectors.reserve(j);
+				for(size_t i = 0; i < k; i++) {
+					vector v(j);
+					for(size_t ii = 0; ii < u.coef.size(); ii++) {
+						v[ii + i] = u[u.degree() - ii];
+					}
+					vectors.emplace_back(std::move(v));
+				}
+				for(size_t i = k; i < j; i++) {
+					vectors.emplace_back(j);
+					vectors.back()[i] = p_power_l;
+				}
+
+				std::cout << "vectors(lattice):\n";
+				for(auto const &v : vectors) {
+					std::cout << v << '\n';
+				} std::cout << "---vectors(lattice)---\n\n";
+
+				auto lat = lattice(vectors);
+				std::cout << "short_vector = " << lat.short_vector() << "\n\n";
+				auto ppg = integer_polynomial(lat.short_vector().reverse()).primitive_eq();
+
+				// 14
+				if(abs(ppg.leading()) < p_power_l) {
+					auto poly_p = divexact(ppg);
+					if(!poly_p) continue;
+
+					// 13
+					std::cout << "13 start\n";
+					for(auto it = T.begin(); it != T.end(); ) {
+						if(ppg.is_divisible_modulo(hensel_v[*it], p)) {
+							it = T.erase(it);
+							continue;
+						}
+						++it;
+					}
+					std::cout << "13 end\n\n";
+
+					std::cout << "T later:\n";
+					for(auto now : T) {
+						std::cout << now << ": " << hensel_v[now] << '\n';
+					} std::cout << "---T---\n\n";
+
+					f_star = std::move(*poly_p);
+					poly_p = nullptr;
+					delete poly_p;
+					b = f_star.leading();
+
+					result.emplace_back(std::move(ppg));
+					std::cout << "f_star = " << f_star << "\n\n";
+					offset = 0;
+					goto LP;
+				}
+			}
+		}
+		for(auto const &now : result) {
+			if(now == f_star) return result;
+		}
+
+		result.emplace_back(std::move(f_star));
+		return result;
 	}
 
 	std::vector<integer_polynomial> integer_polynomial::factorize(mpz_class const &p) const {
+		assert(is_prime(p));
+
 		// Berlekamp
 		integer_matrix L(degree(), degree());
 		mpz_class tmp;
@@ -290,15 +537,15 @@ END:
 			mpz_class const &p,
 			size_t k,
 			size_t desired_power) const {
-		mpz_class tmp, tmp2;
+		mpz_class tmp;
 		mpz_class pk2i; // p^(k + 2^i)
 		mpz_class current_modulo;
-		mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), k);
-		current_modulo = tmp * tmp * p;
-		pk2i = tmp * p;
+		mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), k); // tmp = p^k
+		current_modulo = tmp * tmp * p; // current_modulo = p^(2k + 1)
+		pk2i = tmp * p; // pk2i = p^(k+1)
 		integer_polynomial diff(*this - g * h);
 #ifndef NDEBUG
-		tmp2 = resultant(g, h);
+		mpz_class tmp2 = resultant(g, h);
 		assert(mpz_divisible_p(tmp2.get_mpz_t(), tmp.get_mpz_t()));
 		tmp *= p;
 		assert(!mpz_divisible_p(tmp2.get_mpz_t(), tmp.get_mpz_t()));
@@ -308,50 +555,55 @@ END:
 			assert(mpz_divisible_p(diff[i].get_mpz_t(), current_modulo.get_mpz_t()));
 		}
 #endif
+		mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), 1);
+		// tmp = p
 		// current_modulo = p^(2k + 1)
 		// pk2i = p^(k + 1)
-		size_t current_power = ((k << 1) | 1);
-		size_t current_i = 1;
+		size_t current_power = ((k << 1) | 1); // current_power = 2k + 1
+		size_t current_2i = 1; // current_2i = 1
 
 		while(current_power <= desired_power) {
+			// TODO: Fixit.
 			// current_modulo = p^(2k + 2^i)
 			// pk2i = p^(k + 2^i)
-			size_t i;
-			for (i = 0; i < diff.coef.size(); i++) {
-				mpz_divexact(tmp.get_mpz_t(), diff[i].get_mpz_t(), pk2i.get_mpz_t());
-				diff[i] = tmp;
+			integer_matrix matrix(degree() + 1, degree() + 1);
+			for(size_t i = 0; i < g.degree(); i++) {
+				for(size_t j = 0; j <= h.degree(); j++) {
+					matrix(i + j, i) = h[j];
+				}
 			}
-			integer_matrix matrix(g.degree() + h.degree(), g.degree() + h.degree());
+			for(size_t i = 0; i <= h.degree(); i++) {
+				for(size_t j = 0; j <= g.degree(); j++) {
+					matrix(i + j, i + g.degree()) = g[j];
+				}
+			}
 
-			for (i = 0; i < g.degree(); i++) {
-				for (size_t j = 0; j <= h.degree(); j++) {
-					matrix(j + i, i) = h[j];
-				}
+			vector b(degree() + 1);
+			for(size_t i = 0; i < diff.coef.size(); i++) {
+				mpz_divexact(b[i].get_mpz_t(), diff[i].get_mpz_t(), pk2i.get_mpz_t());
 			}
-			for (; i < g.degree() + h.degree(); i++) {
-				for (size_t j = 0; j <= g.degree(); j++) {
-					matrix(j + i - g.degree(), i) = g[j];
-				}
-			}
-			for(i = diff.coef.size(); i < g.degree() + h.degree(); i++) {
-				diff.coef.emplace_back(0);
-			}
-			auto result = solve(std::move(matrix), vector(diff.coef), current_modulo);
-			std::vector<mpz_class> gn_v, hn_v;
-			gn_v.reserve(g.degree());
-			hn_v.reserve(h.degree() + 1);
-			for (i = 0; i < g.degree(); i++) {
-				gn_v.emplace_back(std::move(result[i]));
-			}
-			for (; i < g.degree() + h.degree(); i++) {
-				hn_v.emplace_back(std::move(result[i]));
-			}
-			g += integer_polynomial(std::move(gn_v)) * current_modulo;
-			h += integer_polynomial(std::move(hn_v)) * current_modulo;
-			current_power += current_i;
-			current_i <<= 1;
-			mpz_pow_ui(current_modulo.get_mpz_t(), p.get_mpz_t(), current_power);
+			auto result = solve(std::move(matrix), std::move(b), current_modulo);
+
+			std::vector<mpz_class> g_star_v(g.degree()), h_star_v(h.degree() + 1);
+			for(size_t i = 0; i < g.degree(); i++) g_star_v[i] = result[i];
+			for(size_t i = 0; i <= h.degree(); i++) h_star_v[i] = result[i + g.degree()];
+			integer_polynomial g_star(std::move(g_star_v)), h_star(std::move(h_star_v));
+			g += g_star * current_modulo; h += h_star * current_modulo;
+
+			current_modulo *= tmp;
+			pk2i *= tmp;
+			tmp *= tmp;
+			diff = *this - g * h;
+			current_power += current_2i;
+			current_2i <<= 1;
 		}
+		mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), desired_power);
+		for(size_t i = 0; i <= g.degree(); i++) {
+			g[i] %= tmp;
+			if(g[i] > ((tmp - 1) >> 1)) g[i] -= tmp;
+			else if(g[i] < -((tmp - 1) >> 1)) g[i] += tmp;
+		}
+		for(size_t i = 0; i < h.degree(); i++) h[i] %= tmp;
 		return { std::move(g), std::move(h) };
 	}
 
@@ -473,6 +725,7 @@ END:
 	[[nodiscard]] integer_polynomial gcd(integer_polynomial a, integer_polynomial b) {
 		if(a.coef.size() < b.coef.size()) return gcd(std::move(b), std::move(a));
 		if(b.coef.empty()) {
+			if(a.coef.empty()) return a;
 			mpz_class g = a.coef[0];
 			mpz_class q;
 			for(size_t i = 1; i < a.coef.size(); i++) {
@@ -482,20 +735,37 @@ END:
 				now = q;
 			} return a;
 		}
+
 		mpz_class leading_gcd = gcd(a.leading(), b.leading());
 		mpz_class q;
 		mpz_divexact(q.get_mpz_t(), b.leading().get_mpz_t(), leading_gcd.get_mpz_t());
 		a *= q;
-		mpz_divexact(q.get_mpz_t(), a.leading().get_mpz_t(), leading_gcd.get_mpz_t());
-		b *= q;
+		mpz_divexact(q.get_mpz_t(), a.leading().get_mpz_t(), b.leading().get_mpz_t());
+
 		for(size_t i = 0; i < b.coef.size(); i++) {
-			a.coef[a.coef.size() - b.coef.size() + i] -= b.coef[i];
-		} a.clean();
+			a.coef[a.coef.size() - b.coef.size() + i] -= b.coef[i] * q;
+		}
+		assert(a.coef.back() == 0);
+		a.clean();
+
+		if(!a.coef.empty()) {
+			leading_gcd = a.leading();
+			for(size_t i = 0; i < a.coef.size() - 1; i++) {
+				leading_gcd = gcd(leading_gcd, a.coef[i]);
+			} for(auto &now : a.coef) {
+				mpz_divexact(q.get_mpz_t(), now.get_mpz_t(), leading_gcd.get_mpz_t());
+				now = q;
+			}
+		}
+
 		return gcd(std::move(b), std::move(a));
 	}
 
 	integer_polynomial gcd(integer_polynomial a, integer_polynomial b, const mpz_class &p) {
 		assert(is_prime(p));
+		for(auto &now : a.coef) now %= p;
+		for(auto &now : b.coef) now %= p;
+		a.clean(); b.clean();
 		if(a.is_zero()) return gcd(std::move(b), std::move(a), p);
 		if(b.is_zero()) {
 			// convert all coefficients of `a` to non-negative
@@ -512,6 +782,14 @@ END:
 				a.coef[i] = (a.coef[i] * inv) % p;
 			} a.coef.back() = 1;
 			return a;
+		}
+		if(mpz_divisible_p(a.leading().get_mpz_t(), p.get_mpz_t())) {
+			a.coef.pop_back();
+			return gcd(std::move(a), std::move(b));
+		}
+		if(mpz_divisible_p(b.leading().get_mpz_t(), p.get_mpz_t())) {
+			b.coef.pop_back();
+			return gcd(std::move(a), std::move(b));
 		}
 		if(a.leading() < 0) return gcd(-a, std::move(b), p);
 		if(b.leading() < 0) return gcd(std::move(a), -b, p);

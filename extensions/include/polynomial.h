@@ -28,14 +28,20 @@ namespace project {
 		[[nodiscard]] bool is_square_free() const;
 		[[nodiscard]] bool is_square_free(mpz_class const &p) const;
 		[[nodiscard]] bool is_monic() const noexcept { return !coef.empty() && coef.back() == 1; }
+		[[nodiscard]] bool is_divisible_modulo(integer_polynomial const &poly, mpz_class const &p) const;
 
 		integer_polynomial &negate() noexcept;
 
 		integer_polynomial &modulo_eq(integer_polynomial, mpz_class const&);
 		[[nodiscard]] integer_polynomial modulo(integer_polynomial, mpz_class const&) const;
 
+		integer_polynomial &primitive_eq();
+		[[nodiscard]] integer_polynomial primitive() const;
+
 		integer_polynomial &derivative_eq();
 		[[nodiscard]] integer_polynomial derivative() const;
+
+		[[nodiscard]] integer_polynomial *divexact(integer_polynomial const&) const;
 
 		integer_polynomial &divexact_modulo_eq(integer_polynomial const&, mpz_class const&);
 		[[nodiscard]] integer_polynomial divexact_modulo(integer_polynomial const &poly, mpz_class const &p) const;

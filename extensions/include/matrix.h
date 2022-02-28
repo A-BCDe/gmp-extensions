@@ -22,6 +22,9 @@ namespace project {
         mpz_class &operator()(size_t r, size_t c);
         mpz_class const &operator()(size_t r, size_t c) const;
 
+		[[nodiscard]] std::vector<vector> to_row_vectors() const;
+		[[nodiscard]] std::vector<vector> to_col_vectors() const;
+
         integer_matrix to_smith_normal_form();
         [[nodiscard]] std::pair<integer_matrix, integer_matrix> smith_normal_form() const;
 
