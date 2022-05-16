@@ -28,7 +28,9 @@ namespace project {
 		[[nodiscard]] bool is_square_free() const;
 		[[nodiscard]] bool is_square_free(mpz_class const &p) const;
 		[[nodiscard]] bool is_monic() const noexcept { return !coef.empty() && coef.back() == 1; }
-		[[nodiscard]] bool is_divisible_modulo(integer_polynomial const &poly, mpz_class const &p) const;
+		[[nodiscard]] bool is_divisible_modulo(integer_polynomial const&, mpz_class const&) const;
+		[[deprecated("You might want to use divexact instead.\n"), nodiscard]]
+		bool is_divisible(integer_polynomial const&) const;
 
 		integer_polynomial &negate() noexcept;
 
@@ -67,6 +69,7 @@ namespace project {
 		[[nodiscard]] integer_polynomial operator-(integer_polynomial const &poly) const { return sub(poly); }
 		[[nodiscard]] integer_polynomial operator*(integer_polynomial const &poly) const { return mul(poly); }
 		[[nodiscard]] integer_polynomial operator*(mpz_class const &n) const { return mul_scalar(n); }
+		[[nodiscard]] friend integer_polynomial operator*(mpz_class const &n, integer_polynomial const &poly) { return poly * n; }
 
 		[[nodiscard]] bool operator==(integer_polynomial const &poly) const { return equal(poly); }
 		[[nodiscard]] bool operator!=(integer_polynomial const &poly) const { return !equal(poly); }

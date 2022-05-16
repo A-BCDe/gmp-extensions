@@ -50,7 +50,7 @@ namespace project {
 	vector &vector::sub_eq(vector const &v) {
 		assert(length() == v.length());
 		for(size_t i = 0; i < length(); i++) {
-			vec[i] += v[i];
+			vec[i] -= v[i];
 		} return *this;
 	}
 

@@ -38,17 +38,13 @@ namespace project {
 
 	inline static size_t find_power(size_t l, size_t r, mpz_class const &p, mpz_class const &n) {
 		mpz_class tmp;
-		size_t res = l;
 		while(l < r) {
 			auto const m = ((l + r) >> 1);
 			mpz_pow_ui(tmp.get_mpz_t(), p.get_mpz_t(), m);
-			if(n >= tmp) {
-				res = m;
-				l = m + 1;
-			}
+			if(n >= tmp) l = m + 1;
 			else r = m;
 		}
-		return res;
+		return l;
 	}
 
 	// class member functions
@@ -110,21 +106,36 @@ namespace project {
 		mpz_class inv, tmp;
 		invert(inv, poly.leading(), p);
 
-		std::vector<mpz_class> v;
+		integer_polynomial monic_poly(inv * poly);
+		for(auto &now : monic_poly.coef) {
+			now %= p;
+		}
+
 		while(polynomial.coef.size() >= poly.coef.size()) {
 			polynomial.coef.back() %= p;
-			tmp = inv * polynomial.coef.back();
-			for(size_t i = 0; i < poly.coef.size() - 1; i++) {
-				polynomial.coef[coef.size() - poly.coef.size() + i] -= poly.coef[i] * tmp;
+			if(polynomial.leading() != 0) {
+				for(size_t i = 1; i < poly.coef.size(); i++) {
+					polynomial.coef[polynomial.degree() - i]
+						-= polynomial.leading() * monic_poly[monic_poly.degree() - i];
+				}
+				polynomial.coef.back() = 0;
 			}
-			v.emplace_back((tmp % p + p) % p);
-			polynomial.coef.pop_back();
 			polynomial.clean();
 		}
 
 		return std::all_of(polynomial.coef.begin(), polynomial.coef.end(), [&p](mpz_class const &n) {
 			return n % p == 0;
 		});
+	}
+
+	bool integer_polynomial::is_divisible(integer_polynomial const &poly) const {
+		assert(!poly.is_zero());
+		auto *polynomial_p = divexact(poly);
+		if(!polynomial_p) {
+			return false;
+		}
+		delete[] polynomial_p;
+		return true;
 	}
 
 	integer_polynomial &integer_polynomial::modulo_eq(integer_polynomial poly, mpz_class const &p) {
@@ -291,7 +302,7 @@ namespace project {
 		// 1
 		mpz_class tmp, f;
 		mpz_class b = leading();
-		mpz_class B;
+		mpz_class B, Bp;
 		mpz_ui_pow_ui(B.get_mpz_t(), 2, 5 * degree() * degree());
 
 		for(auto const &now : coef) {
@@ -299,7 +310,9 @@ namespace project {
 		}
 		mpz_pow_ui(tmp.get_mpz_t(), f.get_mpz_t(), degree());
 		B *= tmp;
-		B = sqrt(B) + 1;
+		Bp = sqrt(B);
+		if(Bp * Bp != B) ++Bp;
+		B = Bp;
 
 		// 2
 		prime_generator pg;
@@ -317,10 +330,6 @@ namespace project {
 		l = find_power((l >> 1) + 1, l + 1, p, B);
 		mpz_pow_ui(p_power_l.get_mpz_t(), p.get_mpz_t(), l);
 
-		std::cout << "B = " << B.get_str() << '\n';
-		std::cout << "l = " << l << '\n';
-		std::cout << "p = " << p.get_str() << "\n\n";
-
 		// 3
 		auto factor_p = factorize(p);
 		for(auto &now : factor_p) {
@@ -335,46 +344,38 @@ namespace project {
 		integer_polynomial tmp_poly1;
 		integer_polynomial tmp_poly2;
 		integer_polynomial tmp_poly3(*this);
-		std::vector<integer_polynomial> hensel_v;
+		std::vector<std::pair<integer_polynomial, int>> hensel_v;
 
+		size_t idx = 0;
 		for(auto const &poly : factor_p) {
 			tmp_poly1 = poly;
 			tmp_poly2 = tmp_poly3.divexact_modulo(tmp_poly1, p);
 			auto pair = tmp_poly3.hensel_lifting(tmp_poly1, tmp_poly2, p, 0, l);
-			hensel_v.emplace_back(std::move(pair.first));
+			hensel_v.emplace_back(std::move(pair.first), idx++);
 			tmp_poly3 = std::move(pair.second);
 		}
 
-		std::cout << "\nhensel_v:\n";
-		for(auto const &now : hensel_v) {
-			std::cout << now << '\n';
-		} std::cout << "---hensel---\n\n";
-
 		// 5 ~ 14
-		std::set<size_t> T;
-		std::vector<integer_polynomial> result;
+		std::set<size_t> T; // T
+		std::vector<integer_polynomial> result; // G
 		for(size_t i = 0; i < hensel_v.size(); i++) T.insert(i);
 		std::sort(hensel_v.begin(), hensel_v.end(),
-				  [](integer_polynomial const &a, integer_polynomial const &b) {
-			return a.degree() < b.degree();
+				  [](std::pair<integer_polynomial, size_t> const &a,
+						  std::pair<integer_polynomial, size_t> const &b) {
+			return a.first.degree() < b.first.degree();
 		});
-		integer_polynomial f_star = *this;
-		ssize_t offset = 0;
+		integer_polynomial f_star(*this);
+		size_t offset = 0;
 	LP: while(!T.empty()) {
 			assert(offset < T.size());
-			auto const current_idx = *std::next(T.rbegin(), offset++);
-			std::cout << "T:\n";
-			for(auto now : T) {
-				std::cout << now << ": " << hensel_v[now] << '\n';
-			} std::cout << "---T---\n\n";
-			auto u = hensel_v[current_idx];
-			std::cout << "u = " << u << "\n\n";
+			auto const current_idx = *std::next(T.rbegin(), static_cast<ptrdiff_t>(offset++));
+			auto u = hensel_v[current_idx].first;
+
 			std::set<size_t> degree_set; // Deg
 			degree_set.insert(0);
-			for(auto now_idx : T) {
+			for(auto now_idx : T) { // Dynamic Programming
 				if(now_idx == current_idx) continue;
-				auto const &now = hensel_v[now_idx];
-				size_t now_deg = now.degree();
+				size_t now_deg = hensel_v[now_idx].first.degree();
 				auto degree_set_tmp = degree_set;
 				for(auto prev : degree_set) {
 					degree_set_tmp.insert(prev + now_deg);
@@ -382,22 +383,17 @@ namespace project {
 				degree_set = std::move(degree_set_tmp);
 			}
 
-			std::cout << "degree_set:\n";
-			for(auto now : degree_set) {
-				std::cout << now << ' ';
-			} std::cout << "\n---degree_set---\n\n";
-
 			for(size_t now_deg : degree_set) {
 				size_t const k = now_deg + 1;
 				size_t const j = u.coef.size() + now_deg;
-				//std::cout << "k = " << k << ", j = " << j << '\n';
-				//std::cout << "u = " << u << '\n';
 				mpz_ui_pow_ui(B.get_mpz_t(), 2, 5 * j * j);
 
 				f = 0; // ||f*||
 				for(auto const &now : f_star.coef) f += now * now;
 				mpz_pow_ui(tmp.get_mpz_t(), f.get_mpz_t(), j << 1);
-				B = sqrt(B * tmp) + 1;
+				Bp = sqrt(B * tmp);
+				if(Bp * Bp < B) ++Bp;
+				B = Bp;
 
 				size_t lp = 1; // l'
 				tmp = p;
@@ -427,35 +423,25 @@ namespace project {
 					vectors.back()[i] = p_power_l;
 				}
 
-				std::cout << "vectors(lattice):\n";
-				for(auto const &v : vectors) {
-					std::cout << v << '\n';
-				} std::cout << "---vectors(lattice)---\n\n";
-
-				auto lat = lattice(vectors);
-				std::cout << "short_vector = " << lat.short_vector() << "\n\n";
-				auto ppg = integer_polynomial(lat.short_vector().reverse()).primitive_eq();
+				lattice lat(vectors);
+				auto const g = integer_polynomial(lat.short_vector().reverse());
+				integer_polynomial ppg(g.primitive());
 
 				// 14
-				if(abs(ppg.leading()) < p_power_l) {
-					auto poly_p = divexact(ppg);
-					if(!poly_p) continue;
+				if(abs(g.leading()) < p_power_l) {
+					auto *poly_p = divexact(ppg);
+					if(!poly_p) {
+						continue;
+					}
 
-					// 13
-					std::cout << "13 start\n";
+					// 13, calculate T <- T - S
 					for(auto it = T.begin(); it != T.end(); ) {
-						if(ppg.is_divisible_modulo(hensel_v[*it], p)) {
+						if(ppg.is_divisible_modulo(factor_p[hensel_v[*it].second], p)) {
 							it = T.erase(it);
 							continue;
 						}
 						++it;
 					}
-					std::cout << "13 end\n\n";
-
-					std::cout << "T later:\n";
-					for(auto now : T) {
-						std::cout << now << ": " << hensel_v[now] << '\n';
-					} std::cout << "---T---\n\n";
 
 					f_star = std::move(*poly_p);
 					poly_p = nullptr;
@@ -463,17 +449,13 @@ namespace project {
 					b = f_star.leading();
 
 					result.emplace_back(std::move(ppg));
-					std::cout << "f_star = " << f_star << "\n\n";
 					offset = 0;
 					goto LP;
 				}
 			}
 		}
-		for(auto const &now : result) {
-			if(now == f_star) return result;
-		}
 
-		result.emplace_back(std::move(f_star));
+		// Removed 15th line as it seems incorrect
 		return result;
 	}
 

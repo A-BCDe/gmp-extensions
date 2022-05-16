@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = --std=c++14 -Wall -O0
+CFLAGS = --std=c++14 -Wall -O3 -DNDEBUG
 LDFLAGS = -lgmp -lgmpxx
 LIB = extensions
 INCLUDE = -I$(LIB)/include/
