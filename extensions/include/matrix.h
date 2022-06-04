@@ -31,10 +31,26 @@ namespace project {
         mpz_class to_congruent_diagonal();
         [[nodiscard]] std::pair<integer_matrix, mpz_class> congruent_diagonal() const;
 
-        [[nodiscard]] std::pair<mpz_class, mpz_class> signature() const;
+        [[nodiscard]] std::pair<size_t, size_t> signature() const;
 
         [[nodiscard]] bool is_symmetric() const;
+		[[nodiscard]] bool is_square() const { return row == col; }
         [[nodiscard]] std::vector<mpz_class> get_diagonal() const;
+
+		[[nodiscard]] vector operate_on(vector const&) const;
+
+		integer_matrix &operator+=(integer_matrix const &matrix) { return add_eq(matrix); }
+		integer_matrix &operator-=(integer_matrix const &matrix) { return sub_eq(matrix); }
+		integer_matrix &operator*=(integer_matrix const &matrix) { return mul_eq(matrix); }
+		integer_matrix &operator*=(mpz_class const &m) { return mul_scalar_eq(m); }
+		integer_matrix &operator*=(vector const &vec) { return mul_vector_eq(vec); }
+
+		[[nodiscard]] integer_matrix operator+(integer_matrix const &matrix) const { return add(matrix); }
+		[[nodiscard]] integer_matrix operator-(integer_matrix const &matrix) const { return sub(matrix); }
+		[[nodiscard]] integer_matrix operator*(integer_matrix const &matrix) const { return mul(matrix); }
+		[[nodiscard]] integer_matrix operator*(mpz_class const &m) const { return mul_scalar(m); }
+		friend integer_matrix operator*(mpz_class const &m, integer_matrix const &matrix) { return matrix.mul_scalar(m); }
+		[[nodiscard]] integer_matrix operator*(vector const &vec) const { return mul_vector(vec); }
 
         friend std::ostream &operator<<(std::ostream &os, integer_matrix const &M);
 		friend vector solve(integer_matrix, vector, mpz_class const&);
@@ -65,6 +81,18 @@ namespace project {
 		void col_multiply(size_t, mpz_class const&);
         void col_multiply_and_add(size_t from, size_t to, const mpz_class& mul);
         void col_gcd_operation(size_t piv, size_t l, size_t r);
+
+		integer_matrix &add_eq(integer_matrix const&);
+		integer_matrix &sub_eq(integer_matrix const&);
+		integer_matrix &mul_eq(integer_matrix const&);
+		integer_matrix &mul_scalar_eq(mpz_class const&);
+		integer_matrix &mul_vector_eq(vector const&);
+
+		[[nodiscard]] integer_matrix add(integer_matrix const&) const;
+		[[nodiscard]] integer_matrix sub(integer_matrix const&) const;
+		[[nodiscard]] integer_matrix mul(integer_matrix const&) const;
+		[[nodiscard]] integer_matrix mul_scalar(mpz_class const&) const;
+		[[nodiscard]] integer_matrix mul_vector(vector const&) const;
     };
 }
 

@@ -3,6 +3,8 @@
 
 #include <gmpxx.h>
 
+#include <functional>
+#include <mutex>
 #include <ostream>
 #include <vector>
 
@@ -15,12 +17,18 @@ namespace project {
 		void print_primes(std::ostream &os) const;
 		mpz_class next_prime();
 
+		std::vector<mpz_class> const &found_primes() const { return primes; }
+
+		mpz_class smallest_prime(std::function<bool(mpz_class const&)> const&);
 
 	private:
 		size_t const sieve_size;
 		mpz_class bound;
 		std::vector<mpz_class> primes; // found primes up to now
 		std::vector<bool> sieve;
+		mutable std::mutex mutex;
+
+		mpz_class next_prime_inner();
 	};
 
 }

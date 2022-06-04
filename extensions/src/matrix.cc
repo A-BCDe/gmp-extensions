@@ -6,7 +6,6 @@
 
 #include <cassert>
 #include <initializer_list>
-#include <iostream>
 #include <ostream>
 #include <vector>
 #include <unistd.h>
@@ -15,9 +14,21 @@ namespace project {
 
 // constructors
 
+	/**
+	 * Constructor.
+	 * Generates a matrix initialized as zero with dimension row * col.
+	 * @param row A row of the matrix
+	 * @param col A column of the matrix
+	 */
     integer_matrix::integer_matrix(size_t row, size_t col)
             : row(row), col(col), mat(row * col) {}
 
+	/**
+	 * Generates a matrix initialized with data with dimension row * col.
+	 * @param row A row of the matrix
+	 * @param col A column of the matrix
+	 * @param data Vector of length row * col which contain values for the matrix
+	 */
     integer_matrix::integer_matrix(size_t row, size_t col, std::vector<std::string> const &data)
             : row(row), col(col), mat(row * col) {
         assert(row * col == data.size());
@@ -26,17 +37,36 @@ namespace project {
         }
     }
 
+	/**
+	 * Generates a matrix initialized with data with dimension row * col.
+	 * @param row A row of the matrix
+	 * @param col A column of the matrix
+	 * @param list List of length row * col which contain values for the matrix
+	 */
     integer_matrix::integer_matrix(size_t row, size_t col, std::initializer_list<mpz_class> list)
             : row(row), col(col), mat(list) {
         assert(list.size() >= row * col);
     }
 
+	/**
+	 * Generates an identity matrix of dimension row * col.
+	 * Diagonal are 1, and all other are zero.
+	 * @param row A row of the matrix
+	 * @param col A column of the matrix
+	 * @return
+	 */
 	integer_matrix integer_matrix::identity(size_t row, size_t col) {
 		integer_matrix I(row, col);
 		for(size_t i = 0; i < row && i < col; i++) I.mat[i * col + i] = 1;
 		return I;
 	}
 
+	/**
+	 * Generate a Sylvester matrix from two polynomials f and g.
+	 * @param f A non-zero polynomial
+	 * @param g A non-zero polynomial
+	 * @return A Sylvester matrix from f and g
+	 */
 	integer_matrix integer_matrix::sylvester_matrix(integer_polynomial const &f, integer_polynomial const &g) {
 		assert(!f.is_zero());
 		assert(!g.is_zero());
@@ -57,12 +87,24 @@ namespace project {
 
 // operators
 
+	/**
+	 * Reference of index (r, c).
+	 * @param r An integer which 0 <= r < row
+	 * @param c An integer which 0 <= c < col
+	 * @return Reference of index (r, c)
+	 */
     mpz_class &integer_matrix::operator()(size_t r, size_t c) {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
+	/**
+	 * Const reference of index (r, c).
+	 * @param r An integer which 0 <= r < row
+	 * @param c An integer which 0 <= c < col
+	 * @return Const reference of index (r, c)
+	 */
     mpz_class const &integer_matrix::operator()(size_t r, size_t c) const {
         assert(r < row);
         assert(c < col);
@@ -71,18 +113,34 @@ namespace project {
 
 // member functions
 
+	/**
+	 * Reference of index (r, c).
+	 * @param r An integer which 0 <= r < row
+	 * @param c An integer which 0 <= c < col
+	 * @return Reference of index (r, c)
+	 */
     mpz_class &integer_matrix::get(size_t r, size_t c) {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
+	/**
+	 * Const reference of index (r, c).
+	 * @param r An integer which 0 <= r < row
+	 * @param c An integer which 0 <= c < col
+	 * @return Const reference of index (r, c)
+	 */
     mpz_class const &integer_matrix::get(size_t r, size_t c) const {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
+	/**
+	 * Generate row vectors from the matrix.
+	 * @return A vector of row vectors.
+	 */
 	std::vector<vector> integer_matrix::to_row_vectors() const {
 		std::vector<vector> result;
 		result.reserve(row);
@@ -96,6 +154,10 @@ namespace project {
 		return result;
 	}
 
+	/**
+	 * Generate column vectors from the matrix.
+	 * @return A vector of column vectors.
+	 */
 	std::vector<vector> integer_matrix::to_col_vectors() const {
 		std::vector<vector> result;
 		result.reserve(col);
@@ -109,6 +171,10 @@ namespace project {
 		return result;
 	}
 
+	/**
+	 * Calculates the Smith normal form of the matrix, then saves it to *this.
+	 * @return Matrix of column operations applied to the original matrix
+	 */
     integer_matrix integer_matrix::to_smith_normal_form() {
         auto Y = identity(row, col);
         auto current_row = row;
@@ -151,8 +217,8 @@ namespace project {
                     row_exchange(piv, --current_row);
                 }
                 // GCD operation on (piv, *)
-                for(size_t i = piv + 1; i < current_col; i++) {
-                    col_gcd_operation_with_companion_matrix(Y, piv, piv, i);
+                for(size_t j = piv + 1; j < current_col; j++) {
+                    col_gcd_operation_with_companion_matrix(Y, piv, piv, j);
                 }
 
                 // check (piv, *)
@@ -207,12 +273,21 @@ namespace project {
         return Y;
     }
 
+	/**
+	 * Calculates the Smith normal form and returns
+	 * the Smith normal form and the matrix of column operations.
+	 * @return { SNF, colop }
+	 */
     std::pair<integer_matrix, integer_matrix> integer_matrix::smith_normal_form() const {
         integer_matrix matrix(*this);
         integer_matrix Y(matrix.to_smith_normal_form());
         return { std::move(matrix), std::move(Y) };
     }
 
+	/**
+	 * Saves and returns a congruent diagonal matrix.
+	 * @return A denominator of the resulting matrix
+	 */
     mpz_class integer_matrix::to_congruent_diagonal() {
         assert(is_symmetric());
         size_t piv = 0;
@@ -270,22 +345,31 @@ namespace project {
         return denominator;
     }
 
+	/**
+	 * Calculates a congruent diagonal matrix.
+	 * @return { congruent diagonal matrix, denominator }
+	 */
     std::pair<integer_matrix, mpz_class> integer_matrix::congruent_diagonal() const {
         integer_matrix matrix(*this);
         mpz_class denominator = matrix.to_congruent_diagonal();
         return { std::move(matrix), std::move(denominator) };
     }
 
-    std::pair<mpz_class, mpz_class> integer_matrix::signature() const {
+	/**
+	 * Calculates the signature of the matrix.
+	 * @return { pos, neg }
+	 */
+    std::pair<size_t, size_t> integer_matrix::signature() const {
+		assert(is_square());
         auto cd = congruent_diagonal();
         auto D = cd.first; auto den = cd.second;
-        mpz_class pos(0), neg(0);
+        size_t pos{}, neg{};
         bool sign = (den > 0);
         for(size_t i = 0; i < row; i++) {
             pos += ((!sign) ^ (D(i, i) > 0));
             neg += ((!sign) ^ (D(i, i) < 0));
         }
-        return { std::move(pos), std::move(neg) };
+        return { pos, neg };
     }
 
     // (l, *) <-> (r, *)
@@ -430,6 +514,26 @@ namespace project {
         return true;
     }
 
+	/**
+	 * Look at the matrix M as an operator working on a vector.
+	 * @param vec An operand
+	 * @return M(vec)
+	 */
+	vector integer_matrix::operate_on(vector const &vec) const {
+		assert(vec.length() == col);
+		vector res(row);
+		for(size_t r = 0; r < row; r++) {
+			for(size_t c = 0; c < col; c++) {
+				res[r] += get(r, c) * vec[c];
+			}
+		}
+		return res;
+	}
+
+	/**
+	 * Get the diagonal of the matrix.
+	 * @return Vector of diagonal of the matrix
+	 */
     std::vector<mpz_class> integer_matrix::get_diagonal() const {
         std::vector<mpz_class> v;
         for(size_t i = 0; i < row && i < col; i++) {
@@ -458,8 +562,17 @@ namespace project {
         return os;
     }
 
+	/**
+	 * Solve Ax = v for x in Z_m.
+	 * Undefined behavior if the equation has multiple solutions or has no solution.
+	 * @param matrix A matrix
+	 * @param v A vector
+	 * @param m An integer
+	 * @return x
+	 */
 	vector solve(integer_matrix matrix, vector v, mpz_class const &m) {
 		assert(m > 0);
+		assert(v.length() == matrix.row);
 		mpz_class inv, tmp;
 		for(size_t c = 0; c < matrix.col; c++) {
 			for(size_t r = c; r < matrix.row; r++) {
@@ -470,6 +583,7 @@ namespace project {
 				}
 			}
 			assert(0);
+			__builtin_unreachable();
 		NXT:invert(inv, matrix(c, c), m);
 			matrix.row_multiply(c, inv);
 			v[c] *= inv;
@@ -487,6 +601,11 @@ namespace project {
 		return v;
 	}
 
+	/**
+	 * Calculate the basis of the subspace which mat * v = 0 for all v in subspace.
+	 * @param mat A matrix
+	 * @return The basis of the matrix.
+	 */
 	std::vector<vector> kernel(integer_matrix mat) {
 		size_t piv = 0;
 		std::vector<vector> space;
@@ -572,6 +691,12 @@ namespace project {
 		return space;
 	}
 
+	/**
+	 * Calculate the basis of the subspace which mat * v = 0 for all v in subspace modulo p.
+	 * @param mat A matrix
+	 * @param p A modulo
+	 * @return The basis of the matrix modulo p.
+	 */
 	std::vector<vector> kernel(integer_matrix mat, mpz_class const &p) {
 		assert(p != 0);
 		size_t piv = 0;
@@ -665,8 +790,13 @@ namespace project {
 		return space;
 	}
 
+	/**
+	 * Calculate the determinant of the matrix.
+	 * @param matrix A matrix
+	 * @return The determinant of the matrix
+	 */
 	mpz_class determinant(integer_matrix matrix) {
-		assert(matrix.row == matrix.col);
+		assert(matrix.is_square());
 		mpz_class det(1); // determinant
 		mpz_class denom(1); // denominator
 		mpz_class g, tmp;
@@ -678,7 +808,7 @@ namespace project {
 				}
 			}
 			return 0;
-			NXT:det *= matrix(r, r);
+		NXT:det *= matrix(r, r);
 			for(size_t c = r + 1; c < matrix.col; c++) {
 				g = gcd(matrix(r, r), matrix(r, c));
 				mpz_divexact(tmp.get_mpz_t(), matrix(r, r).get_mpz_t(), g.get_mpz_t());
@@ -691,5 +821,101 @@ namespace project {
 		assert(mpz_divisible_p(det.get_mpz_t(), denom.get_mpz_t()));
 		mpz_divexact(tmp.get_mpz_t(), det.get_mpz_t(), denom.get_mpz_t());
 		return tmp;
+	}
+
+	integer_matrix &integer_matrix::add_eq(integer_matrix const &matrix) {
+		assert(matrix.row == row);
+		assert(matrix.col == col);
+		for(size_t i = 0; i < row * col; i++) {
+			mat[i] += matrix.mat[i];
+		}
+		return *this;
+	}
+
+	integer_matrix &integer_matrix::sub_eq(integer_matrix const &matrix) {
+		assert(matrix.row == row);
+		assert(matrix.col == col);
+		for(size_t i = 0; i < row * col; i++) {
+			mat[i] -= matrix.mat[i];
+		}
+		return *this;
+	}
+
+	integer_matrix &integer_matrix::mul_eq(integer_matrix const &matrix) {
+		assert(matrix.row == col);
+		integer_matrix res(row, matrix.col);
+		for(size_t r = 0; r < row; r++) {
+			for(size_t c = 0; c < matrix.col; c++) {
+				for(size_t k = 0; k < col; k++) {
+					res(r, c) += get(r, k) * matrix(k, c);
+				}
+			}
+		}
+		col = res.col;
+		mat = std::move(res.mat);
+		return *this;
+	}
+
+	integer_matrix &integer_matrix::mul_scalar_eq(mpz_class const &m) {
+		for(size_t i = 0; i < row * col; i++) {
+			mat[i] *= m;
+		}
+		return *this;
+	}
+
+	integer_matrix &integer_matrix::mul_vector_eq(vector const &vec) {
+		assert(vec.length() == col);
+		integer_matrix matrix(row, 1);
+		for(size_t r = 0; r < row; r++) {
+			for(size_t c = 0; c < col; c++) {
+				matrix(r, 0) += get(r, c) * vec[c];
+			}
+		}
+		col = 1;
+		mat = std::move(matrix.mat);
+		return *this;
+	}
+
+	integer_matrix integer_matrix::add(integer_matrix const &matrix) const {
+		assert(matrix.row == row);
+		assert(matrix.col == col);
+		integer_matrix res(*this);
+		return res.add_eq(matrix);
+	}
+
+	integer_matrix integer_matrix::sub(integer_matrix const &matrix) const {
+		assert(matrix.row == row);
+		assert(matrix.col == col);
+		integer_matrix res(*this);
+		return res.sub_eq(matrix);
+	}
+
+	integer_matrix integer_matrix::mul(integer_matrix const &matrix) const {
+		assert(matrix.row == col);
+		integer_matrix res(row, matrix.col);
+		for(size_t r = 0; r < row; r++) {
+			for(size_t c = 0; c < matrix.col; c++) {
+				for(size_t k = 0; k < col; k++) {
+					res(r, c) += get(r, k) * matrix(k, c);
+				}
+			}
+		}
+		return res;
+	}
+
+	integer_matrix integer_matrix::mul_scalar(mpz_class const &m) const {
+		integer_matrix res(*this);
+		return res.mul_scalar_eq(m);
+	}
+
+	integer_matrix integer_matrix::mul_vector(vector const &vec) const {
+		assert(vec.length() == col);
+		integer_matrix res(row, 1);
+		for(size_t r = 0; r < row; r++) {
+			for(size_t c = 0; c < col; c++) {
+				res(r, 0) += get(r, c) * vec[c];
+			}
+		}
+		return res;
 	}
 }

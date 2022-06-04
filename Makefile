@@ -1,18 +1,18 @@
 CC = g++
-CFLAGS = --std=c++14 -Wall -O3 -DNDEBUG
+CFLAGS = --std=c++14 -Wall -pthread -lpthread -O2 -DNDEBUG
 LDFLAGS = -lgmp -lgmpxx
 LIB = extensions
 INCLUDE = -I$(LIB)/include/
 
 all:	polynomial matrix
 
-polynomial:	app/polynomial.cc lib
+polynomial:	examples/polynomial.cc lib
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o polynomial polynomial.o matrix.o prime_generator.o vector.o number_theoretic.o lattice.o
 
 lib:	lib-integer-vector lib-polynomial lib-integer-matrix lib-prime-generator lib-polynomial-matrix lib-number-theoretic lib-integer-lattice
 
-matrix:	app/matrix.cc lib-integer-matrix
-	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o vector.o number_theoretic.o
+matrix:	examples/matrix.cc lib-integer-matrix lib-number-theoretic lib-prime-generator
+	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o matrix matrix.o vector.o number_theoretic.o prime_generator.o
 
 lib-number-theoretic:	$(LIB)/src/number_theoretic.cc $(LIB)/include/number_theoretic.h
 	$(CC) $< $(INCLUDE) $(CFLAGS) $(LDFLAGS) -c -o number_theoretic.o

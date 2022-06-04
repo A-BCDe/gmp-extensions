@@ -1,9 +1,6 @@
-#include <gmpxx.h>
-
 #include <chrono>
 #include <iostream>
-#include <prime_generator.h>
-#include <polynomial.h>
+#include "polynomial.h"
 
 int main() {
 	std::cout << "Hello, world!" << std::endl;
@@ -26,17 +23,25 @@ int main() {
 	// (x^2 + 2)(x^2 - 2)
 	//project::integer_polynomial poly(std::vector<std::string>{ "-4", "0", "0", "0", "1" });
 	// (3x + 1)(3x + 2)(3x + 3)(3x + 4)
-	project::integer_polynomial poly(std::vector<std::string>{ "24", "150", "315", "270", "81" });
+	// project::integer_polynomial poly(std::vector<std::string>{ "24", "150", "315", "270", "81" });
 	// (2x^2 + 3x + 4)(7x^2 - x + 53)
 	//project::integer_polynomial poly(std::vector<std::string>{ "212", "155", "131", "19", "14" });
 	// (x^18 - 1)
 	//project::integer_polynomial poly(std::vector<std::string>{ "-1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1" });
+	// (x^2 + 1)^3
+	//project::integer_polynomial poly(std::vector<std::string>{ "1", "0", "3", "0", "3", "0", "1" });
+	// (x^2 + 1)^2 (x^2 - x + 1)^3
+	//project::integer_polynomial poly(std::vector<std::string>{ "1", "-3", "8", "-13", "19", "-20", "19", "-13", "8", "-3", "1" });
+	// (x - 1) (x^2 + 1)^2 (x^3 - 1)^3
+	//project::integer_polynomial poly(std::vector<std::string>{ "1", "-1", "2", "-5", "4", "-7", "9", "-6", "9", "-7", "4", "-5", "2", "-1", "1" });
+	// irreducible polynomial of degree 9
+	project::integer_polynomial poly(std::vector<std::string>{ "-28314171263536", "0", "0", "0", "0", "12114901", "0", "-1939601", "0", "21354101" });
 
 /* A code for factorizing modulo p
  * Should not work for the test case (3x + 1)(3x + 2)(3x + 3)(3x + 4), as the leading coefficient is zero.
 	mpz_class const p = 3;
 	std::cout << poly << '\n';
-	auto factors = poly.factorize(p);
+	auto factors = poly.factorize_squarefree(p);
 	std::cout << "Irreducible factors of " << poly << " mod " << p << " are:\n";
 	for(auto const &v : factors) {
 		std::cout << v << '\n';

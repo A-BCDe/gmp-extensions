@@ -1,26 +1,36 @@
 #include "polynomial.h"
 
+#include <number_theoretic.h>
+
 #include <lattice.h>
 
 #include <matrix.h>
-#include <prime_generator.h>
-#include <number_theoretic.h>
 
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <set>
+#include <thread>
 
 namespace project {
 
-	// polynomial.cc specific functions
+	// polynomial.cc specific static functions
 
-	static integer_polynomial make_mono(
+	/**
+	 * Makes a monomial modulo poly on Z_p.
+	 * @param coef The leading coefficient
+	 * @param deg The degree of the monomial
+	 * @param poly The divisor polynomial on Z_p
+	 * @param p A prime
+	 * @return A monomial modulo poly on Z_p.
+	 */
+	inline static integer_polynomial make_monomial(
 			mpz_class const &coef,
 			mpz_class deg,
 			integer_polynomial const &poly,
 			mpz_class const &p) {
 		assert(!poly.is_zero());
+		assert(is_prime(p));
 		assert(coef % p != 0);
 		integer_polynomial result({ (coef % p + p) % p });
 		integer_polynomial mul = integer_polynomial::monomial(1, 1);
@@ -36,6 +46,14 @@ namespace project {
 		return result;
 	}
 
+	/**
+	 * Finds a smallest value k which satisfies p^k > n.
+	 * @param l The smallest possible k
+	 * @param r (The largest possible k) + 1
+	 * @param p The base
+	 * @param n The boundary value
+	 * @return smallest value k which satisfies p^k > n.
+	 */
 	inline static size_t find_power(size_t l, size_t r, mpz_class const &p, mpz_class const &n) {
 		mpz_class tmp;
 		while(l < r) {
@@ -49,24 +67,44 @@ namespace project {
 
 	// class member functions
 
+	/**
+	 * Constructor.
+	 * Sets a polynomial based on coef.
+	 * @param coef A vector of integers which denotes the coefficients of the polynomial
+	 */
 	integer_polynomial::integer_polynomial(std::vector<mpz_class> coef)
 	  : coef(std::move(coef)) { clean(); }
 
+	/**
+	 * Constructor.
+	 * Sets a polynomial based on coef.
+	 * @param coef A vector of integers which denotes the coefficients of the polynomial
+	 */
 	integer_polynomial::integer_polynomial(std::vector<std::string> const &coef) {
 		this->coef.reserve(coef.size());
 		for(std::string const &now : coef) {
 			this->coef.emplace_back(now.c_str());
-		}
+		} clean();
 	}
 
+	/**
+	 * Constructor.
+	 * Sets a polynomial based on v.
+	 * @param v An integer vector which denotes the coefficients of the polynomial
+	 */
 	integer_polynomial::integer_polynomial(vector const &v) {
 		coef.reserve(v.length());
 		for(size_t i = 0; i < v.length(); i++) {
 			coef.emplace_back(v[i]);
-		}
-		clean();
+		} clean();
 	}
 
+	/**
+	 * Generates the monomial given the leading coefficient and its degree.
+	 * @param coefficient The leading coefficient of the monomial
+	 * @param deg The degree of the monomial
+	 * @return A monomial given the leading coefficient and its degree
+	 */
 	integer_polynomial integer_polynomial::monomial(mpz_class const &coefficient, size_t deg) {
 		if(coefficient == 0) return integer_polynomial();
 		integer_polynomial polynomial;
@@ -77,11 +115,20 @@ namespace project {
 		return polynomial;
 	}
 
+	/**
+	 * Generates a constant given the value.
+	 * @param c The value the polynomial will be
+	 * @return A polynomial whose value is c
+	 */
 	integer_polynomial integer_polynomial::constant(mpz_class const &c) {
 		if(c == 0) return integer_polynomial();
 		return integer_polynomial({ c });
 	}
 
+	/**
+	 * Cleans up the polynomial.
+	 * Removes all leading zeros.
+	 */
 	void integer_polynomial::clean() noexcept {
 		if(is_zero()) return;
 		size_t i = coef.size() - 1;
@@ -98,6 +145,12 @@ namespace project {
 		}
 	}
 
+	/**
+	 * Checks if the polynomial is divisible by poly in modulo p.
+	 * @param poly The divisor
+	 * @param p A prime
+	 * @return true if the polynomial is divisible by poly in modulo p, false otherwise
+	 */
 	bool integer_polynomial::is_divisible_modulo(integer_polynomial const &poly, mpz_class const &p) const {
 		assert(!poly.is_zero());
 		assert(is_prime(p));
@@ -128,6 +181,11 @@ namespace project {
 		});
 	}
 
+	/**
+	 * Check if the polynomial is divisible by poly.
+	 * @param poly The divisor
+	 * @return true if the polynomial is divisible, false otherwise
+	 */
 	bool integer_polynomial::is_divisible(integer_polynomial const &poly) const {
 		assert(!poly.is_zero());
 		auto *polynomial_p = divexact(poly);
@@ -138,8 +196,14 @@ namespace project {
 		return true;
 	}
 
+	/**
+	 * Calculates the polynomial modulo poly on Z_p, then saves to and returns *this.
+	 * @param poly The divisor
+	 * @param p Some positive integer which poly mod p != 0
+	 * @return *this after saving the polynomial modulo poly on Z_p.
+	 */
 	integer_polynomial &integer_polynomial::modulo_eq(integer_polynomial poly, mpz_class const &p) {
-		assert(p != 0);
+		assert(p > 0);
 		mpz_class tmp;
 		while(poly.leading() % p == 0) poly.coef.pop_back();
 		assert(!poly.is_zero());
@@ -172,11 +236,21 @@ namespace project {
 		return *this;
 	}
 
+	/**
+	 * Calculates the polynomial modulo poly on Z_p.
+	 * @param poly The divisor
+	 * @param p Some positive integer which poly mod p != 0
+	 * @return The polynomial modulo poly on Z_p
+	 */
 	integer_polynomial integer_polynomial::modulo(integer_polynomial poly, mpz_class const &p) const {
 		integer_polynomial polynomial(*this);
 		return polynomial.modulo_eq(std::move(poly), p);
 	}
 
+	/**
+	 * Makes the polynomial primitive by dividing proper integer to every coefficients.
+	 * @return *this after saving the primitive polynomial
+	 */
 	integer_polynomial &integer_polynomial::primitive_eq() {
 		if(is_zero()) return *this;
 		mpz_class g = coef[0];
@@ -191,11 +265,19 @@ namespace project {
 		return *this;
 	}
 
+	/**
+	 * Calculates the polynomial primitive by dividing proper integer to every coefficients.
+	 * @return The primitive polynomial
+	 */
 	integer_polynomial integer_polynomial::primitive() const {
 		integer_polynomial polynomial(*this);
 		return polynomial.primitive_eq();
 	}
 
+	/**
+	 * Makes the polynomial its derivative.
+	 * @return *this after saving the derivative
+	 */
 	integer_polynomial &integer_polynomial::derivative_eq() {
 		for(size_t i = 0; i < coef.size() - 1; i++) {
 			coef[i] = coef[i + 1] * (i + 1);
@@ -204,11 +286,23 @@ namespace project {
 		return *this;
 	}
 
+	/**
+	 * Calculates the derivative of the polynomial.
+	 * @return the derivative of the polynomial
+	 */
 	integer_polynomial integer_polynomial::derivative() const {
 		integer_polynomial polynomial(*this);
 		return polynomial.derivative_eq();
 	}
 
+	/**
+	 * Checks if the polynomial is divided exactly by poly.
+	 * If it does, then return the quotient.
+	 * Returns a nullptr if the memory allocation failed, or the division is not exact.
+	 * @param poly The divisor
+	 * @return A pointer to the quotient if the polynomial is divided exactly by poly and
+	 * is allocated correctly, nullptr otherwise
+	 */
 	integer_polynomial *integer_polynomial::divexact(integer_polynomial const &poly) const {
 		assert(!poly.is_zero());
 		if(is_zero()) {
@@ -246,6 +340,12 @@ namespace project {
 		return new(std::nothrow) integer_polynomial(std::move(quotient));
 	}
 
+	/**
+	 * Dividing the polynomial provided that poly divides the polynomial exactly in Z_p.
+	 * @param poly The divisor
+	 * @param p A prime
+	 * @return *this after calculating the quotient
+	 */
 	integer_polynomial &integer_polynomial::divexact_modulo_eq(integer_polynomial const &poly, mpz_class const &p) {
 		assert(!poly.is_zero());
 		assert(is_prime(p));
@@ -273,29 +373,76 @@ namespace project {
 		return *this;
 	}
 
+	/**
+	 * Dividing the polynomial provided that poly divides the polynomial exactly in Z_p
+	 * @param poly The divisor
+	 * @param p A prime
+	 * @return The quotient
+	 */
 	integer_polynomial integer_polynomial::divexact_modulo(integer_polynomial const &poly, mpz_class const &p) const {
 		integer_polynomial polynomial(*this);
 		return polynomial.divexact_modulo_eq(poly, p);
 	}
 
+	/**
+	 * Check if the polynomial is square-free.
+	 * @return true if the polynomial is square-free, false otherwise
+	 */
 	bool integer_polynomial::is_square_free() const {
 		return gcd(*this, derivative()).is_constant();
 	}
 
+	/**
+	 * Check if the polynomial is square-free modulo p
+	 * @param p A prime
+	 * @return true if the polynomial is square-free modulo p, false otherwise
+	 */
 	bool integer_polynomial::is_square_free(mpz_class const &p) const {
 		assert(p == 0 || is_prime(p));
 		if(p == 0) return is_square_free();
 		return gcd(*this, derivative(), p).is_constant();
 	}
 
+	/**
+	 * Negate the polynomial
+	 * @return -*this
+	 */
 	integer_polynomial &integer_polynomial::negate() noexcept {
 		for(auto &now : coef) now = -now;
 		return *this;
 	}
 
+	/**
+	 * Factorize the polynomial.
+	 * @return A vector of irreducible polynomials which multiplies up to the polynomial
+	 */
+	std::vector<integer_polynomial> integer_polynomial::factorize() const {
+		auto p = gcd(*this, derivative());
+		if(p.is_constant()) return factorize_squarefree();
+		std::mutex mutex;
+		std::vector<integer_polynomial> res;
+		std::thread thread([&mutex, &res, &p]() {
+			auto partial_res = p.factorize();
+			mutex.lock();
+			res.insert(res.end(), partial_res.begin(), partial_res.end());
+			mutex.unlock();
+		});
+		auto ppoly = std::unique_ptr<integer_polynomial>(divexact(p));
+		assert(ppoly);
+		auto partial_res = ppoly->factorize();
+		mutex.lock();
+		res.insert(res.end(), partial_res.begin(), partial_res.end());
+		mutex.unlock();
+		thread.join();
+		return res;
+	}
 
 	// Based on Thiemann2020_Article_FormalizingTheLLLBasisReductio
-	std::vector<integer_polynomial> integer_polynomial::factorize() const {
+	/**
+	 * Factorize the polynomial assuming the polynomial is square-free.
+	 * @return A vector of irreducible polynomials which multiplies up to the polynomial
+	 */
+	std::vector<integer_polynomial> integer_polynomial::factorize_squarefree() const {
 		assert(is_square_free());
 		assert(degree());
 
@@ -315,11 +462,12 @@ namespace project {
 		B = Bp;
 
 		// 2
-		prime_generator pg;
-		mpz_class p, p_power_l;
-		do {
-			p = pg.next_prime();
-		} while(mpz_divisible_p(leading().get_mpz_t(), p.get_mpz_t()) || !is_square_free(p));
+		auto &pg = the_prime_generator();
+		mpz_class p(pg.smallest_prime([this](mpz_class const& p) {
+			return !mpz_divisible_p(leading().get_mpz_t(), p.get_mpz_t())
+					&& is_square_free(p);
+		}));
+		mpz_class p_power_l;
 
 		size_t l = 1;
 		tmp = p;
@@ -331,7 +479,7 @@ namespace project {
 		mpz_pow_ui(p_power_l.get_mpz_t(), p.get_mpz_t(), l);
 
 		// 3
-		auto factor_p = factorize(p);
+		auto factor_p = factorize_squarefree_modulo(p);
 		for(auto &now : factor_p) {
 			if(now.leading() == 1) continue;
 			mpz_invert(tmp.get_mpz_t(), now.leading().get_mpz_t(), p.get_mpz_t());
@@ -459,7 +607,12 @@ namespace project {
 		return result;
 	}
 
-	std::vector<integer_polynomial> integer_polynomial::factorize(mpz_class const &p) const {
+	/**
+	 * Factorize the polynomial assuming the polynomial is square-free modulo p.
+	 * @param p A prime
+	 * @return A vector of irreducible polynomials modulo p which multiplies up to the polynomial modulo p
+	 */
+	std::vector<integer_polynomial> integer_polynomial::factorize_squarefree_modulo(mpz_class const &p) const {
 		assert(is_prime(p));
 
 		// Berlekamp
@@ -468,7 +621,7 @@ namespace project {
 
 		for(size_t i = 0; i < degree(); i++) {
 			tmp = p * i;
-			auto mono = make_mono(1, tmp, *this, p);
+			auto mono = make_monomial(1, tmp, *this, p);
 			if(!mono.is_zero()) {
 				for (size_t j = 0; j <= mono.degree(); j++) L(j, i) = mono[j];
 			}
@@ -513,6 +666,15 @@ END:
 	}
 
 	// Mignotte1992_Book_MathematicsForComputerAlgebra.pdf
+	/**
+	 * Implementation of Hensel lifting.
+	 * @param g A polynomial
+	 * @param h A polynomial which g * h == *this modulo p
+	 * @param p A prime
+	 * @param k An integer which indicates an initial value p^k
+	 * @param desired_power Desired power
+	 * @return Result of hensel lifting procedure
+	 */
 	std::pair<integer_polynomial, integer_polynomial> integer_polynomial::hensel_lifting(
 			integer_polynomial g,
 			integer_polynomial h,
@@ -589,6 +751,11 @@ END:
 		return { std::move(g), std::move(h) };
 	}
 
+	/**
+	 * Calculate p(x) where p is the polynomial.
+	 * @param x An input
+	 * @return p(x)
+	 */
 	mpz_class integer_polynomial::operator()(mpz_class const &x) const {
 		mpz_class res(coef[0]), mul(x);
 		for(size_t i = 1; i < coef.size(); i++) {
@@ -704,7 +871,13 @@ END:
 
 	// friend functions
 
-	[[nodiscard]] integer_polynomial gcd(integer_polynomial a, integer_polynomial b) {
+	/**
+	 * Calculates a greatest common divisor of two polynomials a and b.
+	 * @param a A polynomial
+	 * @param b A polynomial
+	 * @return GCD of a and b
+	 */
+	integer_polynomial gcd(integer_polynomial a, integer_polynomial b) {
 		if(a.coef.size() < b.coef.size()) return gcd(std::move(b), std::move(a));
 		if(b.coef.empty()) {
 			if(a.coef.empty()) return a;
@@ -743,6 +916,13 @@ END:
 		return gcd(std::move(b), std::move(a));
 	}
 
+	/**
+	 * Calculates a greatest common divisor of two polynomials a and b modulo p.
+	 * @param a A polynomial
+	 * @param b A polynomial
+	 * @param p A prime
+	 * @return GCD of a and b modulo p
+	 */
 	integer_polynomial gcd(integer_polynomial a, integer_polynomial b, const mpz_class &p) {
 		assert(is_prime(p));
 		for(auto &now : a.coef) now %= p;
@@ -798,6 +978,12 @@ END:
 
 	// outside class
 
+	/**
+	 * Resultant of f and g.
+	 * @param f A polynomial
+	 * @param g A polynomial
+	 * @return Resultant of f and g
+	 */
 	mpz_class resultant(integer_polynomial const &f, integer_polynomial const &g) {
 		return determinant(integer_matrix::sylvester_matrix(f, g));
 	}

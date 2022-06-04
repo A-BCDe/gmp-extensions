@@ -17,7 +17,6 @@ namespace project {
 
 	// Thiemann2020_Article_FormalizingTheLLLBasisReductio.pdf
 	// Algorithm 5
-	// TODO: Fix LLL.
 	void lattice::LLL(std::vector<vector> &f,
 	                  mpz_class const &num,
 	                  mpz_class const &denom) {

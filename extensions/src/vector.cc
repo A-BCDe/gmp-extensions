@@ -119,6 +119,7 @@ namespace project {
 					goto NXT;
 				}
 			} continue;
+
 		NXT:for(size_t j = 0; j < row; j++) {
 				if(j == piv) continue;
 				g = gcd(vectors[j][i], vectors[piv][i]);

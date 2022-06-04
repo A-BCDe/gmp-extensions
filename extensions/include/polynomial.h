@@ -49,7 +49,8 @@ namespace project {
 		[[nodiscard]] integer_polynomial divexact_modulo(integer_polynomial const &poly, mpz_class const &p) const;
 
 		std::vector<integer_polynomial> factorize() const;
-		std::vector<integer_polynomial> factorize(mpz_class const&) const;
+		std::vector<integer_polynomial> factorize_squarefree() const;
+		std::vector<integer_polynomial> factorize_squarefree_modulo(mpz_class const &p) const;
 
 		std::pair<integer_polynomial, integer_polynomial> hensel_lifting(integer_polynomial, integer_polynomial, mpz_class const&, size_t, size_t) const;
 

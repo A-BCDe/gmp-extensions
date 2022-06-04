@@ -28,14 +28,6 @@ namespace project {
 		[[nodiscard]] vector reverse() const;
 
 		vector &neg_eq();
-		vector &add_eq(vector const&);
-		vector &sub_eq(vector const&);
-		vector &mul_scalar_eq(mpz_class const&);
-
-		[[nodiscard]] vector neg() const;
-		[[nodiscard]] vector add(vector const&) const;
-		[[nodiscard]] vector sub(vector const&) const;
-		[[nodiscard]] vector mul_scalar(mpz_class const&) const;
 
 		vector &operator+=(vector const &v) { return add_eq(v); }
 		vector &operator-=(vector const &v) { return sub_eq(v); }
@@ -52,6 +44,15 @@ namespace project {
 
 	private:
 		std::vector<mpz_class> vec;
+
+		vector &add_eq(vector const&);
+		vector &sub_eq(vector const&);
+		vector &mul_scalar_eq(mpz_class const&);
+
+		[[nodiscard]] vector neg() const;
+		[[nodiscard]] vector add(vector const&) const;
+		[[nodiscard]] vector sub(vector const&) const;
+		[[nodiscard]] vector mul_scalar(mpz_class const&) const;
 	};
 
 	[[nodiscard]] bool is_linearly_independent(std::vector<vector>);
