@@ -19,6 +19,9 @@ namespace project {
 
 	[[nodiscard]] bool is_prime(mpz_class const&);
 
+	[[nodiscard]] std::vector<mpz_class> prime_factorization(mpz_class n);
+
+	[[nodiscard]] bool primality_test_fermat_little_thm(mpz_class const &n, size_t iter = 50);
 }
 
 #endif

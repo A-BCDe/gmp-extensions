@@ -1,8 +1,10 @@
 #include "number_theoretic.h"
 
 #include <mutex>
+#include <random>
 
 #include <prime_generator.h>
+#include <integer_random.h>
 
 namespace project {
 
@@ -98,5 +100,55 @@ namespace project {
 		for(mpz_class i = 2; i * i <= n; i++) {
 			if(n % i == 0) return false;
 		} return true;
+	}
+
+	/**
+	 * Prime factorization of n.
+	 * @param n An integer
+	 * @return A vector of primes.
+	 */
+	std::vector<mpz_class> prime_factorization(mpz_class n) {
+		std::vector<mpz_class> fac;
+		for(mpz_class i = 2; i * i <= n; ++i) {
+			while(n % i == 0) {
+				n /= i;
+				fac.push_back(i);
+			}
+		}
+		if(n != 1) {
+			fac.push_back(n);
+		}
+		return fac;
+	}
+
+	/**
+	 * Check if n is prime using Fermat's little theorem.
+	 * There is a possibility that n is not prime even if the function returns true.
+	 * @param n A positive integer to check primality.
+	 * @param iter Maximum number of iterations.
+	 * @return The result of the primality test.
+	 */
+	bool primality_test_fermat_little_thm(mpz_class const &n, mpz_class const &iter) {
+		assert(n > 0);
+		mpz_class tmp;
+		if(iter >= n) {
+			for(mpz_class i = 2; i < n; i++) {
+				mpz_powm(tmp.get_mpz_t(), i.get_mpz_t(), n.get_mpz_t(), n.get_mpz_t());
+				if(tmp != i) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		integer_random ir;
+		for(mpz_class i = 0; i < iter; i++) {
+			mpz_class const rnd = ir(2, n);
+			mpz_powm(tmp.get_mpz_t(), rnd.get_mpz_t(), n.get_mpz_t(), n.get_mpz_t());
+			if(tmp != i) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

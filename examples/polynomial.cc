@@ -35,7 +35,9 @@ int main() {
 	// (x - 1) (x^2 + 1)^2 (x^3 - 1)^3
 	//project::integer_polynomial poly(std::vector<std::string>{ "1", "-1", "2", "-5", "4", "-7", "9", "-6", "9", "-7", "4", "-5", "2", "-1", "1" });
 	// irreducible polynomial of degree 9
-	project::integer_polynomial poly(std::vector<std::string>{ "-28314171263536", "0", "0", "0", "0", "12114901", "0", "-1939601", "0", "21354101" });
+	//project::integer_polynomial poly(std::vector<std::string>{ "-28314171263536", "0", "0", "0", "0", "12114901", "0", "-1939601", "0", "21354101" });
+	// (x^2 + x - 1)(x^3 - x^2 + 2x - 3)
+	project::integer_polynomial poly(std::vector<std::string>{ "3", "-5", "0", "0", "0", "1" });
 
 /* A code for factorizing modulo p
  * Should not work for the test case (3x + 1)(3x + 2)(3x + 3)(3x + 4), as the leading coefficient is zero.

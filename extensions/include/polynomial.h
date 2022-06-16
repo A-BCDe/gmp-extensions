@@ -29,7 +29,7 @@ namespace project {
 		[[nodiscard]] bool is_square_free(mpz_class const &p) const;
 		[[nodiscard]] bool is_monic() const noexcept { return !coef.empty() && coef.back() == 1; }
 		[[nodiscard]] bool is_divisible_modulo(integer_polynomial const&, mpz_class const&) const;
-		[[deprecated("You might want to use divexact instead.\n"), nodiscard]]
+		[[deprecated("You might want to use divexact instead.\n"), nodiscard, maybe_unused]]
 		bool is_divisible(integer_polynomial const&) const;
 
 		integer_polynomial &negate() noexcept;
@@ -42,6 +42,8 @@ namespace project {
 
 		integer_polynomial &derivative_eq();
 		[[nodiscard]] integer_polynomial derivative() const;
+
+		[[nodiscard]] mpz_class discriminant() const;
 
 		[[nodiscard]] integer_polynomial *divexact(integer_polynomial const&) const;
 
@@ -81,6 +83,7 @@ namespace project {
 		friend integer_polynomial gcd(integer_polynomial, integer_polynomial, mpz_class const&);
 
 		friend std::ostream &operator<<(std::ostream&, integer_polynomial const&);
+
 
 	private:
 		std::vector<mpz_class> coef;

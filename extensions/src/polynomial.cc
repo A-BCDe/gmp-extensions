@@ -288,11 +288,29 @@ namespace project {
 
 	/**
 	 * Calculates the derivative of the polynomial.
-	 * @return the derivative of the polynomial
+	 * @return The derivative of the polynomial
 	 */
 	integer_polynomial integer_polynomial::derivative() const {
 		integer_polynomial polynomial(*this);
 		return polynomial.derivative_eq();
+	}
+
+	/**
+	 * Calculates the discriminant of the polynomial.
+	 * @return The discriminant of the polynomial
+	 */
+	mpz_class integer_polynomial::discriminant() const {
+		mpz_class res = resultant(*this, this->derivative());
+		mpz_class tmp;
+
+		mpz_divexact(tmp.get_mpz_t(), res.get_mpz_t(), leading().get_mpz_t());
+		if(degree() % 4 != 0 && (degree() - 1) % 4 != 0) {
+			res = -tmp;
+		}
+		else {
+			res = tmp;
+		}
+		return res;
 	}
 
 	/**
