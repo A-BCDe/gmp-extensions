@@ -8,7 +8,7 @@
 #include <ostream>
 #include <vector>
 
-namespace project {
+namespace gmp_extensions {
 
 	class prime_generator {
 	public:

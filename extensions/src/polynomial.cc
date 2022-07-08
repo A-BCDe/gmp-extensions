@@ -12,7 +12,7 @@
 #include <set>
 #include <thread>
 
-namespace project {
+namespace gmp_extensions {
 
 	// polynomial.cc specific static functions
 

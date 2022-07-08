@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace project {
+namespace gmp_extensions {
 
 	/**
 	 * Picks a random integer from a uniform distribution [lo, hi).

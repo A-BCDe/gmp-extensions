@@ -6,7 +6,7 @@
 #include <prime_generator.h>
 #include <integer_random.h>
 
-namespace project {
+namespace gmp_extensions {
 
 	/**
 	 * A single prime generator for less computation.

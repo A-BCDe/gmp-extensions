@@ -2,7 +2,7 @@
 
 #include <ostream>
 
-namespace project {
+namespace gmp_extensions {
 
 	polynomial_matrix::polynomial_matrix(size_t row, size_t col)
 	  : row(row), col(col), mat(row * col) {}

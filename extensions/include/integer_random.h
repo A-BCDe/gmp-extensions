@@ -4,7 +4,7 @@
 #include <gmp.h>
 #include <gmpxx.h>
 
-namespace project {
+namespace gmp_extensions {
 
 	class integer_random {
 	public:

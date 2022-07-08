@@ -1,6 +1,6 @@
 #include <vector.h>
 
-namespace project {
+namespace gmp_extensions {
 
 	vector::vector(size_t len) : vec(len) {}
 

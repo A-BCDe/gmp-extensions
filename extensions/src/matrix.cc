@@ -10,7 +10,7 @@
 #include <vector>
 #include <unistd.h>
 
-namespace project {
+namespace gmp_extensions {
 
 // constructors
 

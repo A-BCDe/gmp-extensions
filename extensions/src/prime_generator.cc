@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <iostream>
 
-namespace project {
+namespace gmp_extensions {
 	// assume unique call
 	/**
 	 * Constructor.

@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace project {
+namespace gmp_extensions {
 
 	class lattice {
 	public:

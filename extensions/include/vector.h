@@ -7,7 +7,7 @@
 #include <vector>
 #include <ostream>
 
-namespace project {
+namespace gmp_extensions {
 
 	class vector {
 	public:

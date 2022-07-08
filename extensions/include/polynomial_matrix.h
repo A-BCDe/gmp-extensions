@@ -3,7 +3,7 @@
 
 #include <polynomial.h>
 
-namespace project {
+namespace gmp_extensions {
 
 	class polynomial_matrix {
 	public:

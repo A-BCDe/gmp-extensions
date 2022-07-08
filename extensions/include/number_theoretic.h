@@ -7,7 +7,7 @@
 
 #include <cassert>
 
-namespace project {
+namespace gmp_extensions {
 
 	prime_generator &the_prime_generator();
 

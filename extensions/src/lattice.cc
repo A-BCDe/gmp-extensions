@@ -5,7 +5,7 @@
 #include <cassert>
 #include <iostream>
 
-namespace project {
+namespace gmp_extensions {
 
 	lattice::lattice(std::vector<vector> bases) : bases(std::move(bases)) {
 		LLL(3, 2);

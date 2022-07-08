@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace project {
+namespace gmp_extensions {
 	class integer_polynomial {
 	public:
 		explicit integer_polynomial() = default;
