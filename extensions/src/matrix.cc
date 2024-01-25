@@ -7,174 +7,172 @@
 #include <cassert>
 #include <initializer_list>
 #include <ostream>
-#include <vector>
 #include <unistd.h>
+#include <vector>
 
 namespace gmp_extensions {
 
-// constructors
+    // constructors
 
-	/**
-	 * Constructor.
-	 * Generates a matrix initialized as zero with dimension row * col.
-	 * @param row A row of the matrix
-	 * @param col A column of the matrix
-	 */
+    /**
+     * Constructor.
+     * Generates a matrix initialized as zero with dimension row * col.
+     * @param row A row of the matrix
+     * @param col A column of the matrix
+     */
     integer_matrix::integer_matrix(size_t row, size_t col)
-            : row(row), col(col), mat(row * col) {}
+     : row(row),
+       col(col),
+       mat(row * col) {}
 
-	/**
-	 * Generates a matrix initialized with data with dimension row * col.
-	 * @param row A row of the matrix
-	 * @param col A column of the matrix
-	 * @param data Vector of length row * col which contain values for the matrix
-	 */
+    /**
+     * Generates a matrix initialized with data with dimension row * col.
+     * @param row A row of the matrix
+     * @param col A column of the matrix
+     * @param data Vector of length row * col which contain values for the matrix
+     */
     integer_matrix::integer_matrix(size_t row, size_t col, std::vector<std::string> const &data)
-            : row(row), col(col), mat(row * col) {
+     : row(row),
+       col(col),
+       mat(row * col) {
         assert(row * col == data.size());
-        for(size_t i = 0; i < row * col; i++) {
-            mat[i] = data[i];
-        }
+        for(size_t i = 0; i < row * col; i++) { mat[i] = data[i]; }
     }
 
-	/**
-	 * Generates a matrix initialized with data with dimension row * col.
-	 * @param row A row of the matrix
-	 * @param col A column of the matrix
-	 * @param list List of length row * col which contain values for the matrix
-	 */
+    /**
+     * Generates a matrix initialized with data with dimension row * col.
+     * @param row A row of the matrix
+     * @param col A column of the matrix
+     * @param list List of length row * col which contain values for the matrix
+     */
     integer_matrix::integer_matrix(size_t row, size_t col, std::initializer_list<mpz_class> list)
-            : row(row), col(col), mat(list) {
+     : row(row),
+       col(col),
+       mat(list) {
         assert(list.size() >= row * col);
     }
 
-	/**
-	 * Generates an identity matrix of dimension row * col.
-	 * Diagonal are 1, and all other are zero.
-	 * @param row A row of the matrix
-	 * @param col A column of the matrix
-	 * @return
-	 */
-	integer_matrix integer_matrix::identity(size_t row, size_t col) {
-		integer_matrix I(row, col);
-		for(size_t i = 0; i < row && i < col; i++) I.mat[i * col + i] = 1;
-		return I;
-	}
+    /**
+     * Generates an identity matrix of dimension row * col.
+     * Diagonal are 1, and all other are zero.
+     * @param row A row of the matrix
+     * @param col A column of the matrix
+     * @return
+     */
+    integer_matrix integer_matrix::identity(size_t row, size_t col) {
+        integer_matrix I(row, col);
+        for(size_t i = 0; i < row && i < col; i++) I.mat[i * col + i] = 1;
+        return I;
+    }
 
-	/**
-	 * Generate a Sylvester matrix from two polynomials f and g.
-	 * @param f A non-zero polynomial
-	 * @param g A non-zero polynomial
-	 * @return A Sylvester matrix from f and g
-	 */
-	integer_matrix integer_matrix::sylvester_matrix(integer_polynomial const &f, integer_polynomial const &g) {
-		assert(!f.is_zero());
-		assert(!g.is_zero());
-		integer_matrix matrix(f.degree() + g.degree(), f.degree() + g.degree());
-		size_t r = 0;
-		for(; r < g.degree(); r++) {
-			for(size_t c = 0; c <= f.degree(); c++) {
-				matrix(r, r + c) = f[f.degree() - c];
-			}
-		}
-		for(; r < f.degree() + g.degree(); r++) {
-			for(size_t c = 0; c <= g.degree(); c++) {
-				matrix(r, r + c - g.degree()) = g[g.degree() - c];
-			}
-		}
-		return matrix;
-	}
+    /**
+     * Generate a Sylvester matrix from two polynomials f and g.
+     * @param f A non-zero polynomial
+     * @param g A non-zero polynomial
+     * @return A Sylvester matrix from f and g
+     */
+    integer_matrix integer_matrix::sylvester_matrix(integer_polynomial const &f, integer_polynomial const &g) {
+        assert(!f.is_zero());
+        assert(!g.is_zero());
+        integer_matrix matrix(f.degree() + g.degree(), f.degree() + g.degree());
+        size_t r = 0;
+        for(; r < g.degree(); r++) {
+            for(size_t c = 0; c <= f.degree(); c++) { matrix(r, r + c) = f[f.degree() - c]; }
+        }
+        for(; r < f.degree() + g.degree(); r++) {
+            for(size_t c = 0; c <= g.degree(); c++) {
+                matrix(r, r + c - g.degree()) = g[g.degree() - c];
+            }
+        }
+        return matrix;
+    }
 
-// operators
+    // operators
 
-	/**
-	 * Reference of index (r, c).
-	 * @param r An integer which 0 <= r < row
-	 * @param c An integer which 0 <= c < col
-	 * @return Reference of index (r, c)
-	 */
+    /**
+     * Reference of index (r, c).
+     * @param r An integer which 0 <= r < row
+     * @param c An integer which 0 <= c < col
+     * @return Reference of index (r, c)
+     */
     mpz_class &integer_matrix::operator()(size_t r, size_t c) {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
-	/**
-	 * Const reference of index (r, c).
-	 * @param r An integer which 0 <= r < row
-	 * @param c An integer which 0 <= c < col
-	 * @return Const reference of index (r, c)
-	 */
+    /**
+     * Const reference of index (r, c).
+     * @param r An integer which 0 <= r < row
+     * @param c An integer which 0 <= c < col
+     * @return Const reference of index (r, c)
+     */
     mpz_class const &integer_matrix::operator()(size_t r, size_t c) const {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
-// member functions
+    // member functions
 
-	/**
-	 * Reference of index (r, c).
-	 * @param r An integer which 0 <= r < row
-	 * @param c An integer which 0 <= c < col
-	 * @return Reference of index (r, c)
-	 */
+    /**
+     * Reference of index (r, c).
+     * @param r An integer which 0 <= r < row
+     * @param c An integer which 0 <= c < col
+     * @return Reference of index (r, c)
+     */
     mpz_class &integer_matrix::get(size_t r, size_t c) {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
-	/**
-	 * Const reference of index (r, c).
-	 * @param r An integer which 0 <= r < row
-	 * @param c An integer which 0 <= c < col
-	 * @return Const reference of index (r, c)
-	 */
+    /**
+     * Const reference of index (r, c).
+     * @param r An integer which 0 <= r < row
+     * @param c An integer which 0 <= c < col
+     * @return Const reference of index (r, c)
+     */
     mpz_class const &integer_matrix::get(size_t r, size_t c) const {
         assert(r < row);
         assert(c < col);
         return mat[r * col + c];
     }
 
-	/**
-	 * Generate row vectors from the matrix.
-	 * @return A vector of row vectors.
-	 */
-	std::vector<vector> integer_matrix::to_row_vectors() const {
-		std::vector<vector> result;
-		result.reserve(row);
-		for(size_t r = 0; r < row; r++) {
-			vector v(col);
-			for(size_t c = 0; c < col; c++) {
-				v[c] = get(r, c);
-			}
-			result.emplace_back(std::move(v));
-		}
-		return result;
-	}
+    /**
+     * Generate row vectors from the matrix.
+     * @return A vector of row vectors.
+     */
+    std::vector<vector> integer_matrix::to_row_vectors() const {
+        std::vector<vector> result;
+        result.reserve(row);
+        for(size_t r = 0; r < row; r++) {
+            vector v(col);
+            for(size_t c = 0; c < col; c++) { v[c] = get(r, c); }
+            result.emplace_back(std::move(v));
+        }
+        return result;
+    }
 
-	/**
-	 * Generate column vectors from the matrix.
-	 * @return A vector of column vectors.
-	 */
-	std::vector<vector> integer_matrix::to_col_vectors() const {
-		std::vector<vector> result;
-		result.reserve(col);
-		for(size_t c = 0; c < col; c++) {
-			vector v(row);
-			for(size_t r = 0; r < row; r++) {
-				v[r] = get(r, c);
-			}
-			result.emplace_back(std::move(v));
-		}
-		return result;
-	}
+    /**
+     * Generate column vectors from the matrix.
+     * @return A vector of column vectors.
+     */
+    std::vector<vector> integer_matrix::to_col_vectors() const {
+        std::vector<vector> result;
+        result.reserve(col);
+        for(size_t c = 0; c < col; c++) {
+            vector v(row);
+            for(size_t r = 0; r < row; r++) { v[r] = get(r, c); }
+            result.emplace_back(std::move(v));
+        }
+        return result;
+    }
 
-	/**
-	 * Calculates the Smith normal form of the matrix, then saves it to *this.
-	 * @return Matrix of column operations applied to the original matrix
-	 */
+    /**
+     * Calculates the Smith normal form of the matrix, then saves it to *this.
+     * @return Matrix of column operations applied to the original matrix
+     */
     integer_matrix integer_matrix::to_smith_normal_form() {
         auto Y = identity(row, col);
         auto current_row = row;
@@ -186,9 +184,7 @@ namespace gmp_extensions {
                 // exchange (piv, *) and (i, *) when (i, piv) != 0
                 for(i = piv; i < current_col; i++) {
                     if(get(i, piv) != 0) {
-                        if(get(i, piv) < 0) {
-                            row_negate(i);
-                        }
+                        if(get(i, piv) < 0) { row_negate(i); }
                         row_exchange(piv, i);
                         break;
                     }
@@ -199,23 +195,17 @@ namespace gmp_extensions {
                     continue;
                 }
                 // GCD operation on (*, piv)
-                for(i = piv + 1; i < current_row; i++) {
-                    row_gcd_operation(piv, piv, i);
-                }
+                for(i = piv + 1; i < current_row; i++) { row_gcd_operation(piv, piv, i); }
 
                 // exchange (*, piv) and (*, i) when (piv, i) != 0
                 for(i = piv; i < current_row; i++) {
                     if(get(piv, i) != 0) {
-                        if(get(i, piv) < 0) {
-                            col_negate_with_companion_matrix(Y, i);
-                        }
+                        if(get(i, piv) < 0) { col_negate_with_companion_matrix(Y, i); }
                         col_exchange_with_companion_matrix(Y, piv, i);
                         break;
                     }
                 }
-                if(i == current_row) {
-                    row_exchange(piv, --current_row);
-                }
+                if(i == current_row) { row_exchange(piv, --current_row); }
                 // GCD operation on (piv, *)
                 for(size_t j = piv + 1; j < current_col; j++) {
                     col_gcd_operation_with_companion_matrix(Y, piv, piv, j);
@@ -231,12 +221,14 @@ namespace gmp_extensions {
                 }
                 break;
 
-                CHK:if(get(piv, piv) != 0) {
-                for(i = piv + 1; i < current_row; i++) {
-                    row_multiply_and_add(piv, i, get(i, piv) / get(piv, piv));
+CHK:
+                if(get(piv, piv) != 0) {
+                    for(i = piv + 1; i < current_row; i++) {
+                        row_multiply_and_add(piv, i, get(i, piv) / get(piv, piv));
+                    }
                 }
-            }
-                CON:continue;
+CON:
+                continue;
             }
             piv++;
         }
@@ -273,21 +265,21 @@ namespace gmp_extensions {
         return Y;
     }
 
-	/**
-	 * Calculates the Smith normal form and returns
-	 * the Smith normal form and the matrix of column operations.
-	 * @return { SNF, colop }
-	 */
+    /**
+     * Calculates the Smith normal form and returns
+     * the Smith normal form and the matrix of column operations.
+     * @return { SNF, colop }
+     */
     std::pair<integer_matrix, integer_matrix> integer_matrix::smith_normal_form() const {
         integer_matrix matrix(*this);
         integer_matrix Y(matrix.to_smith_normal_form());
-        return { std::move(matrix), std::move(Y) };
+        return {std::move(matrix), std::move(Y)};
     }
 
-	/**
-	 * Saves and returns a congruent diagonal matrix.
-	 * @return A denominator of the resulting matrix
-	 */
+    /**
+     * Saves and returns a congruent diagonal matrix.
+     * @return A denominator of the resulting matrix
+     */
     mpz_class integer_matrix::to_congruent_diagonal() {
         assert(is_symmetric());
         size_t piv = 0;
@@ -327,17 +319,13 @@ namespace gmp_extensions {
 
             for(size_t i = 0; i <= piv; i++) g = gcd(g, get(i, i));
             for(size_t i = piv + 1; i < row; i++) {
-                for(size_t j = i; j < col; j++) {
-                    g = gcd(g, get(i, j));
-                }
+                for(size_t j = i; j < col; j++) { g = gcd(g, get(i, j)); }
             }
 
             denominator /= g;
             for(size_t i = 0; i <= piv; i++) get(i, i) /= g;
             for(size_t i = piv + 1; i < row; i++) {
-                for(size_t j = piv + 1; j < row; j++) {
-                    get(i, j) /= g;
-                }
+                for(size_t j = piv + 1; j < row; j++) { get(i, j) /= g; }
             }
 
             piv++;
@@ -345,31 +333,32 @@ namespace gmp_extensions {
         return denominator;
     }
 
-	/**
-	 * Calculates a congruent diagonal matrix.
-	 * @return { congruent diagonal matrix, denominator }
-	 */
+    /**
+     * Calculates a congruent diagonal matrix.
+     * @return { congruent diagonal matrix, denominator }
+     */
     std::pair<integer_matrix, mpz_class> integer_matrix::congruent_diagonal() const {
         integer_matrix matrix(*this);
         mpz_class denominator = matrix.to_congruent_diagonal();
-        return { std::move(matrix), std::move(denominator) };
+        return {std::move(matrix), std::move(denominator)};
     }
 
-	/**
-	 * Calculates the signature of the matrix.
-	 * @return { pos, neg }
-	 */
+    /**
+     * Calculates the signature of the matrix.
+     * @return { pos, neg }
+     */
     std::pair<size_t, size_t> integer_matrix::signature() const {
-		assert(is_square());
+        assert(is_square());
         auto cd = congruent_diagonal();
-        auto D = cd.first; auto den = cd.second;
-        size_t pos{}, neg{};
+        auto D = cd.first;
+        auto den = cd.second;
+        size_t pos {}, neg {};
         bool sign = (den > 0);
         for(size_t i = 0; i < row; i++) {
             pos += ((!sign) ^ (D(i, i) > 0));
             neg += ((!sign) ^ (D(i, i) < 0));
         }
-        return { pos, neg };
+        return {pos, neg};
     }
 
     // (l, *) <-> (r, *)
@@ -378,36 +367,28 @@ namespace gmp_extensions {
         assert(r < row);
         if(l == r) return;
         auto const L = l * col, R = r * col;
-        for(size_t i = 0; i < col; i++) {
-            std::swap(mat[L + i], mat[R + i]);
-        }
+        for(size_t i = 0; i < col; i++) { std::swap(mat[L + i], mat[R + i]); }
     }
 
     // (r, *) <- -(r, *)
     void integer_matrix::row_negate(size_t r) {
         assert(r < row);
         size_t const R = r * col;
-        for(size_t i = R; i < R + col; i++) {
-            mat[i] = -mat[i];
-        }
+        for(size_t i = R; i < R + col; i++) { mat[i] = -mat[i]; }
     }
 
-	// (r, *) <- n * (r, *)
-	void integer_matrix::row_multiply(size_t r, mpz_class const &n) {
-		assert(r < row);
-		size_t const R = r * col;
-		for(size_t i = R; i < R + col; i++) {
-			mat[i] *= n;
-		}
-	}
+    // (r, *) <- n * (r, *)
+    void integer_matrix::row_multiply(size_t r, mpz_class const &n) {
+        assert(r < row);
+        size_t const R = r * col;
+        for(size_t i = R; i < R + col; i++) { mat[i] *= n; }
+    }
 
     // (to, *) <- mul * (from, *) + (to, *)
     void integer_matrix::row_multiply_and_add(size_t from, size_t to, mpz_class const &mul) {
         assert(from < row);
         assert(to < row);
-        for(size_t i = 0; i < col; i++) {
-            get(to, i) += mul * get(from, i);
-        }
+        for(size_t i = 0; i < col; i++) { get(to, i) += mul * get(from, i); }
     }
 
     // calculate gcd of (l, piv) and (r, piv)
@@ -459,34 +440,26 @@ namespace gmp_extensions {
         assert(l < col);
         assert(r < col);
         if(l == r) return;
-        for(size_t i = 0; i < row * col; i += col) {
-            std::swap(mat[i + l], mat[i + r]);
-        }
+        for(size_t i = 0; i < row * col; i += col) { std::swap(mat[i + l], mat[i + r]); }
     }
 
     // (*, c) <- -(*, c)
     void integer_matrix::col_negate(size_t c) {
         assert(c < col);
-        for(size_t i = c; i < row * col; i += col) {
-            mat[i] = -mat[i];
-        }
+        for(size_t i = c; i < row * col; i += col) { mat[i] = -mat[i]; }
     }
 
-	// (*, c) <- n * (*, c)
-	void integer_matrix::col_multiply(size_t c, mpz_class const &n) {
-		assert(c < col);
-		for(size_t i = c; i < row * col; i += col) {
-			mat[i] *= n;
-		}
-	}
+    // (*, c) <- n * (*, c)
+    void integer_matrix::col_multiply(size_t c, mpz_class const &n) {
+        assert(c < col);
+        for(size_t i = c; i < row * col; i += col) { mat[i] *= n; }
+    }
 
     // (*, to) <- mul * (*, from) + (*, to)
     void integer_matrix::col_multiply_and_add(size_t from, size_t to, mpz_class const &mul) {
         assert(from < col);
         assert(to < col);
-        for(size_t i = 0; i < row * col; i += col) {
-            mat[i + to] += mul * mat[i + from];
-        }
+        for(size_t i = 0; i < row * col; i += col) { mat[i + to] += mul * mat[i + from]; }
     }
 
     // calculate gcd of (piv, l) and (piv, r)
@@ -502,7 +475,7 @@ namespace gmp_extensions {
         col_gcd_operation(piv, r, l);
     }
 
-// misc
+    // misc
 
     bool integer_matrix::is_symmetric() const {
         if(row != col) return false;
@@ -514,35 +487,31 @@ namespace gmp_extensions {
         return true;
     }
 
-	/**
-	 * Look at the matrix M as an operator working on a vector.
-	 * @param vec An operand
-	 * @return M(vec)
-	 */
-	vector integer_matrix::operate_on(vector const &vec) const {
-		assert(vec.length() == col);
-		vector res(row);
-		for(size_t r = 0; r < row; r++) {
-			for(size_t c = 0; c < col; c++) {
-				res[r] += get(r, c) * vec[c];
-			}
-		}
-		return res;
-	}
+    /**
+     * Look at the matrix M as an operator working on a vector.
+     * @param vec An operand
+     * @return M(vec)
+     */
+    vector integer_matrix::operate_on(vector const &vec) const {
+        assert(vec.length() == col);
+        vector res(row);
+        for(size_t r = 0; r < row; r++) {
+            for(size_t c = 0; c < col; c++) { res[r] += get(r, c) * vec[c]; }
+        }
+        return res;
+    }
 
-	/**
-	 * Get the diagonal of the matrix.
-	 * @return Vector of diagonal of the matrix
-	 */
+    /**
+     * Get the diagonal of the matrix.
+     * @return Vector of diagonal of the matrix
+     */
     std::vector<mpz_class> integer_matrix::get_diagonal() const {
         std::vector<mpz_class> v;
-        for(size_t i = 0; i < row && i < col; i++) {
-            v.push_back(get(i, i));
-        }
+        for(size_t i = 0; i < row && i < col; i++) { v.push_back(get(i, i)); }
         return v;
     }
 
-// friends
+    // friends
 
     std::ostream &operator<<(std::ostream &os, integer_matrix const &M) {
         std::vector<std::string> out;
@@ -562,360 +531,341 @@ namespace gmp_extensions {
         return os;
     }
 
-	/**
-	 * Solve Ax = v for x in Z_m.
-	 * Undefined behavior if the equation has multiple solutions or has no solution.
-	 * @param matrix A matrix
-	 * @param v A vector
-	 * @param m An integer
-	 * @return x
-	 */
-	vector solve(integer_matrix matrix, vector v, mpz_class const &m) {
-		assert(m > 0);
-		assert(v.length() == matrix.row);
-		mpz_class inv, tmp;
-		for(size_t c = 0; c < matrix.col; c++) {
-			for(size_t r = c; r < matrix.row; r++) {
-				if(gcd(matrix(r, c), m) == 1) {
-					matrix.row_exchange(r, c);
-					std::swap(v[r], v[c]);
-					goto NXT;
-				}
-			}
-			assert(0);
-			__builtin_unreachable();
-		NXT:invert(inv, matrix(c, c), m);
-			matrix.row_multiply(c, inv);
-			v[c] *= inv;
-			matrix(c, c) = 1;
-			for(size_t r = 0; r < matrix.row; r++) {
-				if(r == c) continue;
-				tmp = -matrix(r, c);
-				matrix.row_multiply_and_add(c, r, tmp);
-				v[r] += tmp * v[c];
-			}
-		}
-		for(size_t i = 0; i < v.length(); i++) {
-			v[i] = (v[i] % m + m) % m;
-		}
-		return v;
-	}
+    /**
+     * Solve Ax = v for x in Z_m.
+     * Undefined behavior if the equation has multiple solutions or has no solution.
+     * @param matrix A matrix
+     * @param v A vector
+     * @param m An integer
+     * @return x
+     */
+    vector solve(integer_matrix matrix, vector v, mpz_class const &m) {
+        assert(m > 0);
+        assert(v.length() == matrix.row);
+        mpz_class inv, tmp;
+        for(size_t c = 0; c < matrix.col; c++) {
+            for(size_t r = c; r < matrix.row; r++) {
+                if(gcd(matrix(r, c), m) == 1) {
+                    matrix.row_exchange(r, c);
+                    std::swap(v[r], v[c]);
+                    goto NXT;
+                }
+            }
+            assert(0);
+            __builtin_unreachable();
+NXT:
+            invert(inv, matrix(c, c), m);
+            matrix.row_multiply(c, inv);
+            v[c] *= inv;
+            matrix(c, c) = 1;
+            for(size_t r = 0; r < matrix.row; r++) {
+                if(r == c) continue;
+                tmp = -matrix(r, c);
+                matrix.row_multiply_and_add(c, r, tmp);
+                v[r] += tmp * v[c];
+            }
+        }
+        for(size_t i = 0; i < v.length(); i++) { v[i] = (v[i] % m + m) % m; }
+        return v;
+    }
 
-	/**
-	 * Calculate the basis of the subspace which mat * v = 0 for all v in subspace.
-	 * @param mat A matrix
-	 * @return The basis of the matrix.
-	 */
-	std::vector<vector> kernel(integer_matrix mat) {
-		size_t piv = 0;
-		std::vector<vector> space;
-		std::vector<size_t> pivot;
-		mpz_class g, mul, tmp, tmp2;
-		for(size_t c = 0; c < mat.col; c++) {
-			size_t r = piv;
-			while(r < mat.row) {
-				if(mat(r, c) != 0) {
-					pivot.push_back(c);
-					mat.row_exchange(piv, r);
-					for(r = 0; r < mat.row; r++) {
-						if(r == piv) continue;
-						if(mat(r, c) == 0) continue;
-						g = gcd(mat(piv, c), mat(r, c));
-						mpz_divexact(tmp.get_mpz_t(), mat(piv, c).get_mpz_t(), g.get_mpz_t());
-						mat.row_multiply(r, tmp);
-						mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), mat(piv, c).get_mpz_t());
-						mat.row_multiply_and_add(piv, r, -tmp);
-					}
-					piv++;
-					break;
-				}
-				r++;
-			}
-		}
+    /**
+     * Calculate the basis of the subspace which mat * v = 0 for all v in subspace.
+     * @param mat A matrix
+     * @return The basis of the matrix.
+     */
+    std::vector<vector> kernel(integer_matrix mat) {
+        size_t piv = 0;
+        std::vector<vector> space;
+        std::vector<size_t> pivot;
+        mpz_class g, mul, tmp, tmp2;
+        for(size_t c = 0; c < mat.col; c++) {
+            size_t r = piv;
+            while(r < mat.row) {
+                if(mat(r, c) != 0) {
+                    pivot.push_back(c);
+                    mat.row_exchange(piv, r);
+                    for(r = 0; r < mat.row; r++) {
+                        if(r == piv) continue;
+                        if(mat(r, c) == 0) continue;
+                        g = gcd(mat(piv, c), mat(r, c));
+                        mpz_divexact(tmp.get_mpz_t(), mat(piv, c).get_mpz_t(), g.get_mpz_t());
+                        mat.row_multiply(r, tmp);
+                        mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), mat(piv, c).get_mpz_t());
+                        mat.row_multiply_and_add(piv, r, -tmp);
+                    }
+                    piv++;
+                    break;
+                }
+                r++;
+            }
+        }
 
-		for(size_t r = 0; r < mat.row; r++) {
-			g = abs(mat(r, 0));
-			for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
-			if(g == 0) continue;
-			for(size_t c = 0; c < mat.col; c++) {
-				mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
-				mat(r, c) = tmp;
-			}
-		}
+        for(size_t r = 0; r < mat.row; r++) {
+            g = abs(mat(r, 0));
+            for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
+            if(g == 0) continue;
+            for(size_t c = 0; c < mat.col; c++) {
+                mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
+                mat(r, c) = tmp;
+            }
+        }
 
-		space.reserve(mat.col - pivot.size());
-		if(pivot.empty()) {
-			for(size_t c = 0; c < mat.col; c++) {
-				vector v(mat.col);
-				v[c] = 1;
-				space.emplace_back(std::move(v));
-			}
-			return space;
-		}
+        space.reserve(mat.col - pivot.size());
+        if(pivot.empty()) {
+            for(size_t c = 0; c < mat.col; c++) {
+                vector v(mat.col);
+                v[c] = 1;
+                space.emplace_back(std::move(v));
+            }
+            return space;
+        }
 
-		piv = 0;
-		mul = 1;
-		for(size_t r = 0; r < pivot.size(); r++) {
-			mul *= mat(r, pivot[r]);
-		}
-		for(size_t c = 0; c < mat.col; c++) {
-			bool flag = false;
-			if(pivot[piv] == c) {
-				piv++;
-				continue;
-			}
-			vector v(mat.col);
-			v[c] = mul;
-			for(size_t r = 0; r < pivot.size(); r++) {
-				v[pivot[r]] = v[c] * mat(r, c);
-				mpz_divexact(tmp2.get_mpz_t(), v[pivot[r]].get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
-				v[pivot[r]] = tmp2;
-			}
-			g = v[0];
-			for(size_t i = 1; i < mat.col; i++) {
-				g = gcd(g, v[i]);
-			}
-			assert(g != 0);
-			for(size_t i = 0; i < mat.col; i++) {
-				if(!flag) {
-					if(v[i] > 0) flag = true;
-					else if(v[i] < 0) flag = true, g = -g;
-					else continue;
-				}
-				mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
-				v[i] = tmp2;
-			}
-			space.emplace_back(std::move(v));
-		}
+        piv = 0;
+        mul = 1;
+        for(size_t r = 0; r < pivot.size(); r++) { mul *= mat(r, pivot[r]); }
+        for(size_t c = 0; c < mat.col; c++) {
+            bool flag = false;
+            if(pivot[piv] == c) {
+                piv++;
+                continue;
+            }
+            vector v(mat.col);
+            v[c] = mul;
+            for(size_t r = 0; r < pivot.size(); r++) {
+                v[pivot[r]] = v[c] * mat(r, c);
+                mpz_divexact(tmp2.get_mpz_t(), v[pivot[r]].get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
+                v[pivot[r]] = tmp2;
+            }
+            g = v[0];
+            for(size_t i = 1; i < mat.col; i++) { g = gcd(g, v[i]); }
+            assert(g != 0);
+            for(size_t i = 0; i < mat.col; i++) {
+                if(!flag) {
+                    if(v[i] > 0) flag = true;
+                    else if(v[i] < 0)
+                        flag = true, g = -g;
+                    else
+                        continue;
+                }
+                mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
+                v[i] = tmp2;
+            }
+            space.emplace_back(std::move(v));
+        }
 
-		return space;
-	}
+        return space;
+    }
 
-	/**
-	 * Calculate the basis of the subspace which mat * v = 0 for all v in subspace modulo p.
-	 * @param mat A matrix
-	 * @param p A modulo
-	 * @return The basis of the matrix modulo p.
-	 */
-	std::vector<vector> kernel(integer_matrix mat, mpz_class const &p) {
-		assert(p != 0);
-		size_t piv = 0;
-		std::vector<vector> space;
-		std::vector<size_t> pivot;
-		mpz_class g, mul, tmp, tmp2;
-		for(size_t c = 0; c < mat.col; c++) {
-			size_t r = piv;
-			while(r < mat.row) {
-				mat(r, c) %= p;
-				if(mat(r, c) != 0) {
-					pivot.push_back(c);
-					mat.row_exchange(piv, r);
-					for(r = 0; r < mat.row; r++) {
-						if(r == piv) continue;
-						if(mat(r, c) == 0) continue;
-						g = gcd(mat(piv, c), mat(r, c));
-						mpz_divexact(tmp.get_mpz_t(), mat(piv, c).get_mpz_t(), g.get_mpz_t());
-						mat.row_multiply(r, tmp);
-						mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), mat(piv, c).get_mpz_t());
-						mat.row_multiply_and_add(piv, r, -tmp);
-					}
-					piv++;
-					break;
-				}
-				r++;
-			}
-		}
+    /**
+     * Calculate the basis of the subspace which mat * v = 0 for all v in subspace
+     * modulo p.
+     * @param mat A matrix
+     * @param p A modulo
+     * @return The basis of the matrix modulo p.
+     */
+    std::vector<vector> kernel(integer_matrix mat, mpz_class const &p) {
+        assert(p != 0);
+        size_t piv = 0;
+        std::vector<vector> space;
+        std::vector<size_t> pivot;
+        mpz_class g, mul, tmp, tmp2;
+        for(size_t c = 0; c < mat.col; c++) {
+            size_t r = piv;
+            while(r < mat.row) {
+                mat(r, c) %= p;
+                if(mat(r, c) != 0) {
+                    pivot.push_back(c);
+                    mat.row_exchange(piv, r);
+                    for(r = 0; r < mat.row; r++) {
+                        if(r == piv) continue;
+                        if(mat(r, c) == 0) continue;
+                        g = gcd(mat(piv, c), mat(r, c));
+                        mpz_divexact(tmp.get_mpz_t(), mat(piv, c).get_mpz_t(), g.get_mpz_t());
+                        mat.row_multiply(r, tmp);
+                        mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), mat(piv, c).get_mpz_t());
+                        mat.row_multiply_and_add(piv, r, -tmp);
+                    }
+                    piv++;
+                    break;
+                }
+                r++;
+            }
+        }
 
-		for(size_t r = 0; r < mat.row; r++) {
-			for(size_t c = 0; c < mat.col; c++) {
-				mat(r, c) %= p;
-			}
-		}
+        for(size_t r = 0; r < mat.row; r++) {
+            for(size_t c = 0; c < mat.col; c++) { mat(r, c) %= p; }
+        }
 
-		for(size_t r = 0; r < mat.row; r++) {
-			g = abs(mat(r, 0));
-			for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
-			if(g == 0) continue;
-			for(size_t c = 0; c < mat.col; c++) {
-				mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
-				mat(r, c) = tmp;
-			}
-		}
+        for(size_t r = 0; r < mat.row; r++) {
+            g = abs(mat(r, 0));
+            for(size_t c = 1; c < mat.col; c++) g = gcd(g, mat(r, c));
+            if(g == 0) continue;
+            for(size_t c = 0; c < mat.col; c++) {
+                mpz_divexact(tmp.get_mpz_t(), mat(r, c).get_mpz_t(), g.get_mpz_t());
+                mat(r, c) = tmp;
+            }
+        }
 
-		space.reserve(mat.col - pivot.size());
-		if(pivot.empty()) {
-			for(size_t c = 0; c < mat.col; c++) {
-				vector v(mat.col);
-				v[c] = 1;
-				space.emplace_back(std::move(v));
-			}
-			return space;
-		}
+        space.reserve(mat.col - pivot.size());
+        if(pivot.empty()) {
+            for(size_t c = 0; c < mat.col; c++) {
+                vector v(mat.col);
+                v[c] = 1;
+                space.emplace_back(std::move(v));
+            }
+            return space;
+        }
 
-		piv = 0;
-		mul = 1;
-		for(size_t r = 0; r < pivot.size(); r++) {
-			mul *= mat(r, pivot[r]);
-		}
-		assert(mul % p != 0);
-		for(size_t c = 0; c < mat.col; c++) {
-			bool flag = false;
-			if(pivot[piv] == c) {
-				piv++;
-				continue;
-			}
-			vector v(mat.col);
-			v[c] = mul;
-			for(size_t r = 0; r < pivot.size(); r++) {
-				tmp2 = -v[c] * mat(r, c);
-				mpz_divexact(v[pivot[r]].get_mpz_t(), tmp2.get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
-			}
-			g = v[0];
-			for(size_t i = 1; i < mat.col; i++) {
-				g = gcd(g, v[i]);
-			}
-			assert(g != 0);
-			for(size_t i = 0; i < mat.col; i++) {
-				if(!flag) {
-					if(v[i] > 0) flag = true;
-					else if(v[i] < 0) flag = true, g = -g;
-					else continue;
-				}
-				mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
-				v[i] = (tmp2 % p + p) % p;
-			}
-			space.emplace_back(std::move(v));
-		}
+        piv = 0;
+        mul = 1;
+        for(size_t r = 0; r < pivot.size(); r++) { mul *= mat(r, pivot[r]); }
+        assert(mul % p != 0);
+        for(size_t c = 0; c < mat.col; c++) {
+            bool flag = false;
+            if(pivot[piv] == c) {
+                piv++;
+                continue;
+            }
+            vector v(mat.col);
+            v[c] = mul;
+            for(size_t r = 0; r < pivot.size(); r++) {
+                tmp2 = -v[c] * mat(r, c);
+                mpz_divexact(v[pivot[r]].get_mpz_t(), tmp2.get_mpz_t(), mat(r, pivot[r]).get_mpz_t());
+            }
+            g = v[0];
+            for(size_t i = 1; i < mat.col; i++) { g = gcd(g, v[i]); }
+            assert(g != 0);
+            for(size_t i = 0; i < mat.col; i++) {
+                if(!flag) {
+                    if(v[i] > 0) flag = true;
+                    else if(v[i] < 0)
+                        flag = true, g = -g;
+                    else
+                        continue;
+                }
+                mpz_divexact(tmp2.get_mpz_t(), v[i].get_mpz_t(), g.get_mpz_t());
+                v[i] = (tmp2 % p + p) % p;
+            }
+            space.emplace_back(std::move(v));
+        }
 
-		return space;
-	}
+        return space;
+    }
 
-	/**
-	 * Calculate the determinant of the matrix.
-	 * @param matrix A matrix
-	 * @return The determinant of the matrix
-	 */
-	mpz_class determinant(integer_matrix matrix) {
-		assert(matrix.is_square());
-		mpz_class det(1); // determinant
-		mpz_class denom(1); // denominator
-		mpz_class g, tmp;
-		for(size_t r = 0; r < matrix.row; r++) {
-			for(size_t c = r; c < matrix.col; c++) {
-				if(matrix(r, c) != 0) {
-					matrix.col_exchange(r, c);
-					goto NXT;
-				}
-			}
-			return 0;
-		NXT:det *= matrix(r, r);
-			for(size_t c = r + 1; c < matrix.col; c++) {
-				g = gcd(matrix(r, r), matrix(r, c));
-				mpz_divexact(tmp.get_mpz_t(), matrix(r, r).get_mpz_t(), g.get_mpz_t());
-				matrix.col_multiply(c, tmp);
-				denom *= tmp;
-				mpz_divexact(tmp.get_mpz_t(), matrix(r, c).get_mpz_t(), matrix(r, r).get_mpz_t());
-				matrix.col_multiply_and_add(r, c, -tmp);
-			}
-		}
-		assert(mpz_divisible_p(det.get_mpz_t(), denom.get_mpz_t()));
-		mpz_divexact(tmp.get_mpz_t(), det.get_mpz_t(), denom.get_mpz_t());
-		return tmp;
-	}
+    /**
+     * Calculate the determinant of the matrix.
+     * @param matrix A matrix
+     * @return The determinant of the matrix
+     */
+    mpz_class determinant(integer_matrix matrix) {
+        assert(matrix.is_square());
+        mpz_class det(1);  // determinant
+        mpz_class denom(1);  // denominator
+        mpz_class g, tmp;
+        for(size_t r = 0; r < matrix.row; r++) {
+            for(size_t c = r; c < matrix.col; c++) {
+                if(matrix(r, c) != 0) {
+                    matrix.col_exchange(r, c);
+                    goto NXT;
+                }
+            }
+            return 0;
+NXT:
+            det *= matrix(r, r);
+            for(size_t c = r + 1; c < matrix.col; c++) {
+                g = gcd(matrix(r, r), matrix(r, c));
+                mpz_divexact(tmp.get_mpz_t(), matrix(r, r).get_mpz_t(), g.get_mpz_t());
+                matrix.col_multiply(c, tmp);
+                denom *= tmp;
+                mpz_divexact(tmp.get_mpz_t(), matrix(r, c).get_mpz_t(), matrix(r, r).get_mpz_t());
+                matrix.col_multiply_and_add(r, c, -tmp);
+            }
+        }
+        assert(mpz_divisible_p(det.get_mpz_t(), denom.get_mpz_t()));
+        mpz_divexact(tmp.get_mpz_t(), det.get_mpz_t(), denom.get_mpz_t());
+        return tmp;
+    }
 
-	integer_matrix &integer_matrix::add_eq(integer_matrix const &matrix) {
-		assert(matrix.row == row);
-		assert(matrix.col == col);
-		for(size_t i = 0; i < row * col; i++) {
-			mat[i] += matrix.mat[i];
-		}
-		return *this;
-	}
+    integer_matrix &integer_matrix::add_eq(integer_matrix const &matrix) {
+        assert(matrix.row == row);
+        assert(matrix.col == col);
+        for(size_t i = 0; i < row * col; i++) { mat[i] += matrix.mat[i]; }
+        return *this;
+    }
 
-	integer_matrix &integer_matrix::sub_eq(integer_matrix const &matrix) {
-		assert(matrix.row == row);
-		assert(matrix.col == col);
-		for(size_t i = 0; i < row * col; i++) {
-			mat[i] -= matrix.mat[i];
-		}
-		return *this;
-	}
+    integer_matrix &integer_matrix::sub_eq(integer_matrix const &matrix) {
+        assert(matrix.row == row);
+        assert(matrix.col == col);
+        for(size_t i = 0; i < row * col; i++) { mat[i] -= matrix.mat[i]; }
+        return *this;
+    }
 
-	integer_matrix &integer_matrix::mul_eq(integer_matrix const &matrix) {
-		assert(matrix.row == col);
-		integer_matrix res(row, matrix.col);
-		for(size_t r = 0; r < row; r++) {
-			for(size_t c = 0; c < matrix.col; c++) {
-				for(size_t k = 0; k < col; k++) {
-					res(r, c) += get(r, k) * matrix(k, c);
-				}
-			}
-		}
-		col = res.col;
-		mat = std::move(res.mat);
-		return *this;
-	}
+    integer_matrix &integer_matrix::mul_eq(integer_matrix const &matrix) {
+        assert(matrix.row == col);
+        integer_matrix res(row, matrix.col);
+        for(size_t r = 0; r < row; r++) {
+            for(size_t c = 0; c < matrix.col; c++) {
+                for(size_t k = 0; k < col; k++) { res(r, c) += get(r, k) * matrix(k, c); }
+            }
+        }
+        col = res.col;
+        mat = std::move(res.mat);
+        return *this;
+    }
 
-	integer_matrix &integer_matrix::mul_scalar_eq(mpz_class const &m) {
-		for(size_t i = 0; i < row * col; i++) {
-			mat[i] *= m;
-		}
-		return *this;
-	}
+    integer_matrix &integer_matrix::mul_scalar_eq(mpz_class const &m) {
+        for(size_t i = 0; i < row * col; i++) { mat[i] *= m; }
+        return *this;
+    }
 
-	integer_matrix &integer_matrix::mul_vector_eq(vector const &vec) {
-		assert(vec.length() == col);
-		integer_matrix matrix(row, 1);
-		for(size_t r = 0; r < row; r++) {
-			for(size_t c = 0; c < col; c++) {
-				matrix(r, 0) += get(r, c) * vec[c];
-			}
-		}
-		col = 1;
-		mat = std::move(matrix.mat);
-		return *this;
-	}
+    integer_matrix &integer_matrix::mul_vector_eq(vector const &vec) {
+        assert(vec.length() == col);
+        integer_matrix matrix(row, 1);
+        for(size_t r = 0; r < row; r++) {
+            for(size_t c = 0; c < col; c++) { matrix(r, 0) += get(r, c) * vec[c]; }
+        }
+        col = 1;
+        mat = std::move(matrix.mat);
+        return *this;
+    }
 
-	integer_matrix integer_matrix::add(integer_matrix const &matrix) const {
-		assert(matrix.row == row);
-		assert(matrix.col == col);
-		integer_matrix res(*this);
-		return res.add_eq(matrix);
-	}
+    integer_matrix integer_matrix::add(integer_matrix const &matrix) const {
+        assert(matrix.row == row);
+        assert(matrix.col == col);
+        integer_matrix res(*this);
+        return res.add_eq(matrix);
+    }
 
-	integer_matrix integer_matrix::sub(integer_matrix const &matrix) const {
-		assert(matrix.row == row);
-		assert(matrix.col == col);
-		integer_matrix res(*this);
-		return res.sub_eq(matrix);
-	}
+    integer_matrix integer_matrix::sub(integer_matrix const &matrix) const {
+        assert(matrix.row == row);
+        assert(matrix.col == col);
+        integer_matrix res(*this);
+        return res.sub_eq(matrix);
+    }
 
-	integer_matrix integer_matrix::mul(integer_matrix const &matrix) const {
-		assert(matrix.row == col);
-		integer_matrix res(row, matrix.col);
-		for(size_t r = 0; r < row; r++) {
-			for(size_t c = 0; c < matrix.col; c++) {
-				for(size_t k = 0; k < col; k++) {
-					res(r, c) += get(r, k) * matrix(k, c);
-				}
-			}
-		}
-		return res;
-	}
+    integer_matrix integer_matrix::mul(integer_matrix const &matrix) const {
+        assert(matrix.row == col);
+        integer_matrix res(row, matrix.col);
+        for(size_t r = 0; r < row; r++) {
+            for(size_t c = 0; c < matrix.col; c++) {
+                for(size_t k = 0; k < col; k++) { res(r, c) += get(r, k) * matrix(k, c); }
+            }
+        }
+        return res;
+    }
 
-	integer_matrix integer_matrix::mul_scalar(mpz_class const &m) const {
-		integer_matrix res(*this);
-		return res.mul_scalar_eq(m);
-	}
+    integer_matrix integer_matrix::mul_scalar(mpz_class const &m) const {
+        integer_matrix res(*this);
+        return res.mul_scalar_eq(m);
+    }
 
-	integer_matrix integer_matrix::mul_vector(vector const &vec) const {
-		assert(vec.length() == col);
-		integer_matrix res(row, 1);
-		for(size_t r = 0; r < row; r++) {
-			for(size_t c = 0; c < col; c++) {
-				res(r, 0) += get(r, c) * vec[c];
-			}
-		}
-		return res;
-	}
-}
+    integer_matrix integer_matrix::mul_vector(vector const &vec) const {
+        assert(vec.length() == col);
+        integer_matrix res(row, 1);
+        for(size_t r = 0; r < row; r++) {
+            for(size_t c = 0; c < col; c++) { res(r, 0) += get(r, c) * vec[c]; }
+        }
+        return res;
+    }
+}  // namespace gmp_extensions

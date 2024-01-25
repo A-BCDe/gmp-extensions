@@ -5,20 +5,20 @@
 
 namespace gmp_extensions {
 
-	class polynomial_matrix {
-	public:
-		polynomial_matrix(size_t, size_t);
+    class polynomial_matrix {
+    public:
+        polynomial_matrix(size_t, size_t);
 
-		integer_polynomial &operator()(size_t r, size_t c);
-		integer_polynomial const &operator()(size_t r, size_t c) const;
+        integer_polynomial &operator()(size_t r, size_t c);
+        integer_polynomial const &operator()(size_t r, size_t c) const;
 
-		friend std::ostream &operator<<(std::ostream &os, polynomial_matrix const &M);
+        friend std::ostream &operator<<(std::ostream &os, polynomial_matrix const &M);
 
-	private:
-		size_t row, col;
-		std::vector<integer_polynomial> mat;
-	};
+    private:
+        size_t row, col;
+        std::vector<integer_polynomial> mat;
+    };
 
-}
+}  // namespace gmp_extensions
 
 #endif
